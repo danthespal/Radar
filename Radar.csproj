@@ -38,7 +38,7 @@
   <!-- Deploy the plugin DLL into the running host's Plugins/ folder. Pass -p:OriathHubDir="<path>\" at build time. -->
   <Target Name="CopyToHostPluginsDir" AfterTargets="Build" Condition="'$(OriathHubDir)' != ''">
     <Copy SourceFiles="$(OutDir)$(TargetName)$(TargetExt)"
-          DestinationFolder="$(OriathHubDir)Plugins\$(AssemblyName)"
+          DestinationFolder="$(OriathHubDir)\Plugins\$(AssemblyName)"
           SkipUnchangedFiles="true" />
   </Target>
 
@@ -48,7 +48,7 @@
       <RadarAssets Include="icons.png;important_tgt_files.txt;boss_arena_tgt_files.txt;stairs_tgt_files.txt" />
     </ItemGroup>
     <Copy SourceFiles="@(RadarAssets)"
-          DestinationFolder="$(OriathHubDir)Plugins\$(AssemblyName)"
+          DestinationFolder="$(OriathHubDir)\Plugins\$(AssemblyName)"
           SkipUnchangedFiles="true" />
   </Target>
 
