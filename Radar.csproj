@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <!-- net10.0-windows to match the host; its APIs are [SupportedOSPlatform("windows")], so a
+         plain net10.0 plugin raises CA1416 on every host call. -->
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Nullable>enable</Nullable>
+    <NoWarn>1701;1702;1591</NoWarn>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Radar builds against the OriathHub.Sdk package (ImGui.NET, SixLabors.ImageSharp,
+      Newtonsoft.Json, ClickableTransparentOverlay and Coroutine come transitively).
+      OriathHub.Sdk must be available from a configured NuGet source.
+    -->
+    <PackageReference Include="OriathHub.Sdk" Version="$(OriathHubSdkVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="icons.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="important_tgt_files.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="boss_arena_tgt_files.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="stairs_tgt_files.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- Deploy the plugin DLL into the running host's Plugins/ folder. Pass -p:OriathHubDir="<path>\" at build time. -->
+  <Target Name="CopyToHostPluginsDir" AfterTargets="Build" Condition="'$(OriathHubDir)' != ''">
+    <Copy SourceFiles="$(OutDir)$(TargetName)$(TargetExt)"
+          DestinationFolder="$(OriathHubDir)Plugins\$(AssemblyName)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Deploy the icon sprite + tgt data files alongside the DLL. -->
+  <Target Name="CopyAssetsToHost" AfterTargets="Build" Condition="'$(OriathHubDir)' != ''">
+    <ItemGroup>
+      <RadarAssets Include="icons.png;important_tgt_files.txt;boss_arena_tgt_files.txt;stairs_tgt_files.txt" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RadarAssets)"
+          DestinationFolder="$(OriathHubDir)Plugins\$(AssemblyName)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
