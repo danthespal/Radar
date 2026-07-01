@@ -18,6 +18,7 @@ namespace OriathHub.Plugins.Radar
     using OriathHub.RemoteEnums.Entity;
     using OriathHub.RemoteObjects.Components;
     using OriathHub.RemoteObjects.States.InGameStateObjects;
+    using OriathHub.RemoteObjects.UiElement;
     using OriathHub.Utils;
     using SixLabors.ImageSharp;
     using SixLabors.ImageSharp.PixelFormats;
@@ -78,6 +79,12 @@ namespace OriathHub.Plugins.Radar
         private double largeMapDiagonalLength = 0x00;
 
         private float largeMapAutoScale = 0.1738f;
+
+        // Diagonal + scale of the map currently being drawn (large or mini), set before
+        // each map's draw calls and passed to LargeMapHelper.GridDeltaToMapPixels.
+        private double activeMapDiagonal = 0x00;
+
+        private float activeMapScale = 0.5f;
 
         private IntPtr walkableMapTexture = IntPtr.Zero;
         private Vector2 walkableMapDimension = Vector2.Zero;
@@ -435,8 +442,8 @@ namespace OriathHub.Plugins.Radar
                     ? this.largeMapAutoScale
                     : this.Settings.LargeMapScaleMultiplier;
                 var largeMapModifiedZoom = largeMapScale * largeMap.Zoom;
-                Helper.DiagonalLength = this.largeMapDiagonalLength;
-                Helper.Scale = largeMapModifiedZoom;
+                this.activeMapDiagonal = this.largeMapDiagonalLength;
+                this.activeMapScale = largeMapModifiedZoom;
                 ImGui.SetNextWindowPos(this.Settings.CullWindowPos);
                 ImGui.SetNextWindowSize(this.Settings.CullWindowSize);
                 ImGui.SetNextWindowBgAlpha(0f);
@@ -457,8 +464,8 @@ namespace OriathHub.Plugins.Radar
                     this.UpdateMiniMapDetails();
                 }
 
-                Helper.DiagonalLength = this.miniMapDiagonalLength;
-                Helper.Scale = miniMap.Zoom;
+                this.activeMapDiagonal = this.miniMapDiagonalLength;
+                this.activeMapScale = miniMap.Zoom;
                 var miniMapCenter = miniMap.Position +
                     (miniMap.Size / 2) +
                     miniMap.DefaultShift +
@@ -609,14 +616,14 @@ namespace OriathHub.Plugins.Radar
                 this.walkableMapDimension.X,
                 this.walkableMapDimension.Y);
 
-            var p1 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Left, rectf.Top), -pRender.TerrainHeight);
-            var p2 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Right, rectf.Top), -pRender.TerrainHeight);
-            var p3 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Right, rectf.Bottom), -pRender.TerrainHeight);
-            var p4 = Helper.DeltaInWorldToMapDelta(
-                new Vector2(rectf.Left, rectf.Bottom), -pRender.TerrainHeight);
+            var p1 = LargeMapHelper.GridDeltaToMapPixels(
+                new Vector2(rectf.Left, rectf.Top), -pRender.TerrainHeight, this.activeMapDiagonal, this.activeMapScale);
+            var p2 = LargeMapHelper.GridDeltaToMapPixels(
+                new Vector2(rectf.Right, rectf.Top), -pRender.TerrainHeight, this.activeMapDiagonal, this.activeMapScale);
+            var p3 = LargeMapHelper.GridDeltaToMapPixels(
+                new Vector2(rectf.Right, rectf.Bottom), -pRender.TerrainHeight, this.activeMapDiagonal, this.activeMapScale);
+            var p4 = LargeMapHelper.GridDeltaToMapPixels(
+                new Vector2(rectf.Left, rectf.Bottom), -pRender.TerrainHeight, this.activeMapDiagonal, this.activeMapScale);
             p1 += mapCenter;
             p2 += mapCenter;
             p3 += mapCenter;
@@ -670,8 +677,8 @@ namespace OriathHub.Plugins.Radar
                     height = currentAreaInstance.GridHeightData[(int)location.Y][(int)location.X];
                 }
 
-                var fpos = Helper.DeltaInWorldToMapDelta(
-                    location - pPos, -playerRender.TerrainHeight + height);
+                var fpos = LargeMapHelper.GridDeltaToMapPixels(
+                    location - pPos, -playerRender.TerrainHeight + height, this.activeMapDiagonal, this.activeMapScale);
                 var textMin = mapCenter + fpos - stringImGuiSize;
                 var textMax = mapCenter + fpos + stringImGuiSize;
                 if (textMax.X < clipMin.X || textMin.X > clipMax.X || textMax.Y < clipMin.Y || textMin.Y > clipMax.Y)
@@ -796,7 +803,7 @@ namespace OriathHub.Plugins.Radar
                                 h = currentAreaInstance.GridHeightData[iy][ix];
                             }
 
-                            var fpos = Helper.DeltaInWorldToMapDelta(gridPos - pPos, -playerRender.TerrainHeight + h);
+                            var fpos = LargeMapHelper.GridDeltaToMapPixels(gridPos - pPos, -playerRender.TerrainHeight + h, this.activeMapDiagonal, this.activeMapScale);
                             var screenPos = mapCenter + fpos;
 
                             fgDraw.AddLine(prevScreen.Value, screenPos, lineCol, thickness);
@@ -872,8 +879,8 @@ namespace OriathHub.Plugins.Radar
                     height = currentAreaInstance.GridHeightData[(int)location.Y][(int)location.X];
                 }
 
-                var fpos = Helper.DeltaInWorldToMapDelta(
-                    location - pPos, -playerRender.TerrainHeight + height);
+                var fpos = LargeMapHelper.GridDeltaToMapPixels(
+                    location - pPos, -playerRender.TerrainHeight + height, this.activeMapDiagonal, this.activeMapScale);
                 var iconSizeMultiplierVector = new Vector2(iconSizeMultiplier);
                 iconSizeMultiplierVector *= icon.IconScale;
                 var offset = shiftUp ? new Vector2(0, iconSizeMultiplierVector.Y) : Vector2.Zero;
@@ -950,7 +957,7 @@ namespace OriathHub.Plugins.Radar
                 }
 
                 var ePos = new Vector2(entityRender.GridPosition.X, entityRender.GridPosition.Y);
-                var fpos = Helper.DeltaInWorldToMapDelta(ePos - pPos, entityRender.TerrainHeight - playerRender.TerrainHeight);
+                var fpos = LargeMapHelper.GridDeltaToMapPixels(ePos - pPos, entityRender.TerrainHeight - playerRender.TerrainHeight, this.activeMapDiagonal, this.activeMapScale);
                 var screenPos = mapCenter + fpos;
                 if (screenPos.X < clipMin.X - clipPadding || screenPos.X > clipMax.X + clipPadding ||
                     screenPos.Y < clipMin.Y - clipPadding || screenPos.Y > clipMax.Y + clipPadding)
@@ -1225,7 +1232,7 @@ namespace OriathHub.Plugins.Radar
             var area = Core.Process.WindowArea;
             if (area.Width > 0 && area.Height > 0)
             {
-                this.largeMapAutoScale = LargeMapScaleFix.Compute(area.Width, area.Height);
+                this.largeMapAutoScale = LargeMapHelper.ComputeAutoScale(area.Width, area.Height);
             }
         }
 
