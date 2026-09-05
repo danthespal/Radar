@@ -48,6 +48,7 @@ namespace OriathHub.Plugins.Radar
         private ActiveCoroutine? onAreaChange;
 
         private string currentAreaName = string.Empty;
+        private string currentAreaHash = string.Empty;
 
         private volatile PathCacheEntry[] _poiPaths = Array.Empty<PathCacheEntry>();
         private static readonly Vector4[] DefaultPathColors =
@@ -419,6 +420,8 @@ namespace OriathHub.Plugins.Radar
             {
                 return;
             }
+
+            this.EnsureCurrentAreaCaches();
 
             if (this.Settings.MakeCullWindowFullScreen)
             {
@@ -1159,13 +1162,28 @@ namespace OriathHub.Plugins.Radar
             while (true)
             {
                 yield return new Wait(RemoteEvents.AreaChanged);
-                this.CleanUpRadarPluginCaches();
-                this.currentAreaName = Core.States.InGameStateObject.CurrentWorldInstance.AreaDetails.Id;
-                // Terrain grid buffers can stream in a few frames after the area change (notably in
-                // Trial of the Sekhemas rooms), so the texture may not be buildable yet. Attempt it
-                // here; DrawLargeMap retries each frame until the walkable grid is available.
-                this.GenerateMapTexture();
+                this.UpdateCurrentAreaCaches();
             }
+        }
+
+        private void EnsureCurrentAreaCaches()
+        {
+            var areaHash = Core.States.InGameStateObject.CurrentAreaInstance.AreaHash;
+            if (!string.IsNullOrEmpty(areaHash) && areaHash != this.currentAreaHash)
+            {
+                this.UpdateCurrentAreaCaches();
+            }
+        }
+
+        private void UpdateCurrentAreaCaches()
+        {
+            this.CleanUpRadarPluginCaches();
+            this.currentAreaHash = Core.States.InGameStateObject.CurrentAreaInstance.AreaHash;
+            this.currentAreaName = Core.States.InGameStateObject.CurrentWorldInstance.AreaDetails.Id;
+            // Terrain grid buffers can stream in a few frames after the area change (notably in
+            // Trial of the Sekhemas rooms), so the texture may not be buildable yet. DrawLargeMap
+            // retries until the walkable grid is available.
+            this.GenerateMapTexture();
         }
 
         private IEnumerator<Wait> OnMove()
@@ -1934,6 +1952,7 @@ namespace OriathHub.Plugins.Radar
             this._lastPoiBoxRects.Clear();
             this.RemoveMapTexture();
             this.currentAreaName = string.Empty;
+            this.currentAreaHash = string.Empty;
             // Cancel any in-flight compute and hand out a fresh token source — the cancelled one
             // would otherwise abort every future compute. The old task observes its cancelled token
             // and won't publish; nulling the handle lets the new area start computing immediately.
