@@ -433,7 +433,7 @@ namespace OriathHub.Plugins.Radar
             // The in-area LargeMap stays visible underneath the checkpoint/world-travel screen,
             // but that screen pans independently so the radar icons would be stuck in place.
             // Only draw the large-map radar for the actual area map, not the travel panel.
-            if (largeMap.IsVisible && !Core.States.InGameStateObject.GameUi.WorldMapPanel.IsVisible)
+            if (largeMap.IsVisible && !Core.States.InGameStateObject.GameUi.CheckpointTravelPanel.IsVisible)
             {
                 if (this.largeMapDiagonalLength <= 0)
                 {
