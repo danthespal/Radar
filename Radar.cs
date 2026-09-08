@@ -115,7 +115,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.1";
+        public override string Version => "1.0.2";
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -1137,6 +1137,8 @@ namespace OriathHub.Plugins.Radar
                         }
                         else
                         {
+                            if (entityValue.EntityCustomGroup == RadarSettings.RitualRuneGroup && IsRitualComplete(entityValue))
+                                break;
                             if (entityValue.EntityCustomGroup == RadarSettings.Expedition2EncounterGroup && IsExpedition2Complete(entityValue))
                                 break;
                             if (entityValue.EntityCustomGroup == RadarSettings.BrequelInitiatorGroup && IsBrequelComplete(entityValue))
@@ -1370,6 +1372,20 @@ namespace OriathHub.Plugins.Radar
 
             Core.Overlay.AddOrGetImagePointer("walkable_map", image, false, out var t);
             this.walkableMapTexture = t;
+        }
+
+        private static bool IsRitualComplete(Entity entity)
+        {
+            if (!entity.TryGetComponent<StateMachine>(out var sm))
+                return false;
+            var states = sm.States;
+            for (int i = 0; i < states.Count; i++)
+            {
+                if (states[i].Name == "current_state" && states[i].Value == 3)
+                    return true;
+            }
+
+            return false;
         }
 
         private static bool IsExpedition2Complete(Entity entity)
