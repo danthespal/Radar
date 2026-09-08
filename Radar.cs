@@ -115,7 +115,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.2";
+        public override string Version => "1.0.3";
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -1381,7 +1381,7 @@ namespace OriathHub.Plugins.Radar
             var states = sm.States;
             for (int i = 0; i < states.Count; i++)
             {
-                if (states[i].Name == "current_state" && states[i].Value == 3)
+                if (states[i].Name == "current_state" && states[i].Value is 3 or 4)
                     return true;
             }
 
