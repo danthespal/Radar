@@ -30,6 +30,7 @@ namespace OriathHub.Plugins.Radar
     public sealed class Radar : PluginBase
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
+        private const string StoneCircleTgtPrefix = "Metadata/Terrain/Gallows/Leagues/StoneCircle/Tiles/StoneCircle_01";
 
         private readonly string delveChestStarting = "Metadata/Chests/DelveChests/";
         private readonly Dictionary<uint, string> delveChestCache = new();
@@ -115,7 +116,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.3";
+        public override string Version => "1.0.4";
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -316,6 +317,8 @@ namespace OriathHub.Plugins.Radar
                 "Icons for expedition remnants with specific mods. Set size to 0 to disable.");
             this.Settings.DrawIconsSettingToImGui("Temple Icons", this.Settings.TempleIcons,
                 "Icons for Incursion Waygate devices (Vaal Ruins).");
+            this.Settings.DrawIconsSettingToImGui("Runed Monolith Icons", this.Settings.RunedMonolithIcons,
+                "Icons for Stone Circle terrain features.");
             this.Settings.DrawIconsSettingToImGui("Boss Icons", this.Settings.BossIcons,
                 "Icons for map boss arenas.");
         }
@@ -382,7 +385,7 @@ namespace OriathHub.Plugins.Radar
             new SettingSearchEntry("Advanced", "Show pathfinding lines to POI", this.DrawPathToPoiControls,
                 "path pathfinding lines poi thickness colors"),
             new SettingSearchEntry("Advanced", "Icons Setting", this.DrawIconsControls,
-                "icons base breach delirium expedition temple ritual boss minimap"),
+                "icons base breach delirium expedition temple runed monolith ritual boss minimap"),
         };
 
         /// <inheritdoc/>
@@ -830,7 +833,16 @@ namespace OriathHub.Plugins.Radar
 
             foreach (var tgtKV in currentAreaInstance.TgtTilesLocations)
             {
-                if (tgtKV.Key.StartsWith(TempleTgtPrefix) && tgtKV.Key.EndsWith(":1-y:1"))
+                if (tgtKV.Key.StartsWith(StoneCircleTgtPrefix) && tgtKV.Key.EndsWith("x:1-y:1"))
+                {
+                    if (!this.Settings.IsGroupEnabled("Runed Monolith Icons") ||
+                        !this.Settings.IsItemEnabled("Runed Monolith Icons", "Stone Circle"))
+                        continue;
+                    if (!this.Settings.RunedMonolithIcons.TryGetValue("Stone Circle", out var stoneCircleIcon))
+                        continue;
+                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, stoneCircleIcon, iconSizeMultiplier);
+                }
+                else if (tgtKV.Key.StartsWith(TempleTgtPrefix) && tgtKV.Key.EndsWith("x:1-y:1"))
                 {
                     if (!this.Settings.IsGroupEnabled("Temple Icons") ||
                         !this.Settings.IsItemEnabled("Temple Icons", "Vaal Ruins"))

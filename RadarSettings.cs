@@ -192,6 +192,11 @@ namespace OriathHub.Plugins.Radar
         public Dictionary<string, IconPicker> TempleIcons = new();
 
         /// <summary>
+        /// Icons to display for Runed Monolith terrain features.
+        /// </summary>
+        public Dictionary<string, IconPicker> RunedMonolithIcons = new();
+
+        /// <summary>
         /// Icons to display on the map. Boss arena icons for endgame maps.
         /// </summary>
         public Dictionary<string, IconPicker> BossIcons = new();
@@ -673,6 +678,7 @@ namespace OriathHub.Plugins.Radar
             foreach (var icon in this.DeliriumIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.ExpeditionIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.TempleIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
+            foreach (var icon in this.RunedMonolithIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.BossIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.ExpeditionMarkerIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.ExpeditionRemnantIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
@@ -695,6 +701,7 @@ namespace OriathHub.Plugins.Radar
             this.AddDefaultExpeditionMarkerIcons(basicIconPathName);
             this.AddDefaultExpeditionRemnantIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
+            this.AddDefaultRunedMonolithIcons(basicIconPathName);
             this.AddDefaultBossIcons(basicIconPathName);
         }
 
@@ -759,7 +766,12 @@ namespace OriathHub.Plugins.Radar
 
         private void AddDefaultTempleIcons(string iconPathName)
         {
-            this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 75, IconSize));
+            this.TempleIcons.TryAdd("Vaal Ruins", new IconPicker(iconPathName, 9, 2, 40, IconSize));
+        }
+
+        private void AddDefaultRunedMonolithIcons(string iconPathName)
+        {
+            this.RunedMonolithIcons.TryAdd("Stone Circle", new IconPicker(iconPathName, 2, 58, 40, IconSize));
         }
 
         private void AddDefaultExpeditionMarkerIcons(string iconPathName)
