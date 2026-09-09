@@ -30,7 +30,8 @@ namespace OriathHub.Plugins.Radar
     public sealed class Radar : PluginBase
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
-        private const string StoneCircleTgtPrefix = "Metadata/Terrain/Gallows/Leagues/StoneCircle/Tiles/StoneCircle";
+        private const string StoneCircleTgtPrefix = "Metadata/Terrain/Gallows/Leagues/StoneCircle/Tiles/StoneCircle_";
+        private const string StoneCircleTgtSuffix = ".tdtx:1-y:1";
 
         private readonly string delveChestStarting = "Metadata/Chests/DelveChests/";
         private readonly Dictionary<uint, string> delveChestCache = new();
@@ -116,7 +117,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.5";
+        public override string Version => "1.0.6";
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -833,7 +834,7 @@ namespace OriathHub.Plugins.Radar
 
             foreach (var tgtKV in currentAreaInstance.TgtTilesLocations)
             {
-                if (tgtKV.Key.StartsWith(StoneCircleTgtPrefix) && tgtKV.Key.EndsWith("x:1-y:1"))
+                if (IsStoneCircleTgt(tgtKV.Key))
                 {
                     if (!this.Settings.IsGroupEnabled("Runed Monolith Icons") ||
                         !this.Settings.IsItemEnabled("Runed Monolith Icons", "Stone Circle"))
@@ -906,6 +907,24 @@ namespace OriathHub.Plugins.Radar
                     icon.UV0,
                     icon.UV1);
             }
+        }
+
+        private static bool IsStoneCircleTgt(string tgtPath)
+        {
+            if (!tgtPath.StartsWith(StoneCircleTgtPrefix) || !tgtPath.EndsWith(StoneCircleTgtSuffix))
+                return false;
+
+            var variantLength = tgtPath.Length - StoneCircleTgtPrefix.Length - StoneCircleTgtSuffix.Length;
+            if (variantLength == 0)
+                return false;
+
+            for (var i = 0; i < variantLength; i++)
+            {
+                if (!char.IsDigit(tgtPath[StoneCircleTgtPrefix.Length + i]))
+                    return false;
+            }
+
+            return true;
         }
 
         private void DrawMapIcons(Vector2 mapCenter, float iconSizeMultiplier)
