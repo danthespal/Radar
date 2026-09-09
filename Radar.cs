@@ -30,7 +30,7 @@ namespace OriathHub.Plugins.Radar
     public sealed class Radar : PluginBase
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
-        private const string StoneCircleTgtPrefix = "Metadata/Terrain/Gallows/Leagues/StoneCircle/Tiles/StoneCircle_01";
+        private const string StoneCircleTgtPrefix = "Metadata/Terrain/Gallows/Leagues/StoneCircle/Tiles/StoneCircle";
 
         private readonly string delveChestStarting = "Metadata/Chests/DelveChests/";
         private readonly Dictionary<uint, string> delveChestCache = new();
@@ -116,7 +116,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.4";
+        public override string Version => "1.0.5";
 
         /// <inheritdoc/>
         public override void DrawSettings()
