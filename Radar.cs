@@ -117,7 +117,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.6";
+        public override string Version => "1.0.7";
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -1090,6 +1090,8 @@ namespace OriathHub.Plugins.Radar
                     case EntityTypes.Monster:
                         if (entityValue.TryGetComponent<Life>(out var monLife) && !monLife.IsAlive)
                             break;
+                        if (IsSyntheticHiddenMonster(entityValue))
+                            break;
                         if (IsMonsterModHelper(entityValue))
                             break;
 
@@ -1462,6 +1464,34 @@ namespace OriathHub.Plugins.Radar
             return entity.TryGetComponent<ObjectMagicProperties>(out var oComp, false) &&
                 oComp.ModNames.Contains("RateLimitedDaemon") &&
                 oComp.ModNames.Contains("MonsterNoDropsOrExperience");
+        }
+
+        private static bool IsSyntheticHiddenMonster(Entity entity)
+        {
+            if (!entity.TryGetComponent<Stats>(out var stats))
+                return false;
+
+            if (HasActiveStat(stats, GameStats.hidden_monster_force_mini_life_bar))
+                return false;
+
+            var cannotBeDamaged = HasActiveStat(stats, GameStats.base_cannot_be_damaged) ||
+                HasActiveStat(stats, GameStats.cannot_be_damaged);
+            var ignoredByEnemyTargetSelection =
+                HasActiveStat(stats, GameStats.ignored_by_enemy_target_selection) ||
+                HasActiveStat(stats, GameStats.base_ignored_by_enemy_target_selection);
+
+            return cannotBeDamaged &&
+                HasActiveStat(stats, GameStats.is_hidden_monster) &&
+                ignoredByEnemyTargetSelection &&
+                HasActiveStat(stats, GameStats.monster_no_drops_or_experience);
+        }
+
+        private static bool HasActiveStat(Stats stats, GameStats stat)
+        {
+            if (stats.StatsChangedByBuffAndActions.TryGetValue(stat, out var value))
+                return value > 0;
+
+            return stats.StatsChangedByItems.TryGetValue(stat, out value) && value > 0;
         }
 
         private IconPicker RarityToIconMapping(
