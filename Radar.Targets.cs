@@ -61,6 +61,13 @@ namespace OriathHub.Plugins.Radar
         /// </summary>
         private IReadOnlyList<AreaRoom> _areaRooms = Array.Empty<AreaRoom>();
 
+        /// <summary>
+        ///     Rooms already claimed by a specifically-named target this update, so a generic
+        ///     <c>Name: "*"</c> + <c>Rooms</c> rule (e.g. "Boss Room") does not also draw a redundant
+        ///     label on top of a more specific one covering the same room (e.g. "Crop Circle").
+        /// </summary>
+        private HashSet<AreaRoom> _occupiedRooms = new();
+
         private void LoadTargets()
         {
             this._targetDescriptions = new();
@@ -115,13 +122,25 @@ namespace OriathHub.Plugins.Radar
                 Core.States.InGameStateObject.CurrentAreaInstance.TgtTilesLocations);
             this._areaRooms = Core.States.InGameStateObject.CurrentAreaInstance.Rooms;
 
-            var result = new Dictionary<string, ClusteredTarget>();
+            var resolved = new List<(TargetDescription Target, Vector2[] Locations, bool IsGenericRoomMatch)>();
             foreach (var target in this._targetDescriptionsInArea.Values)
             {
-                var locations = this.ClusterTarget(target);
+                var (locations, isGenericRoomMatch) = this.ClusterTarget(target);
                 if (locations is { Length: > 0 })
                 {
-                    result[target.EqualityId] = new ClusteredTarget(target, locations);
+                    resolved.Add((target, locations, isGenericRoomMatch));
+                }
+            }
+
+            this._occupiedRooms = this.FindOccupiedRooms(resolved);
+
+            var result = new Dictionary<string, ClusteredTarget>();
+            foreach (var (target, locations, isGenericRoomMatch) in resolved)
+            {
+                var finalLocations = isGenericRoomMatch ? this.ExcludeOccupiedRooms(locations) : locations;
+                if (finalLocations.Length > 0)
+                {
+                    result[target.EqualityId] = new ClusteredTarget(target, finalLocations);
                 }
             }
 
@@ -129,20 +148,55 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        ///     Tries the target's primary pattern, then each <see cref="TargetDescription.Alternatives"/> in order; the first with any match wins.
+        ///     Rooms already covered by a specifically-named target's marker, for suppressing redundant
+        ///     generic <c>Name: "*"</c> + <c>Rooms</c> markers in the same room. See <see cref="_occupiedRooms"/>.
         /// </summary>
-        private Vector2[]? ClusterTarget(TargetDescription target)
+        private HashSet<AreaRoom> FindOccupiedRooms(List<(TargetDescription Target, Vector2[] Locations, bool IsGenericRoomMatch)> resolved)
+        {
+            var occupied = new HashSet<AreaRoom>();
+            foreach (var (_, locations, isGenericRoomMatch) in resolved)
+            {
+                if (isGenericRoomMatch)
+                {
+                    continue;
+                }
+
+                foreach (var location in locations)
+                {
+                    foreach (var room in this._areaRooms)
+                    {
+                        if (room.ContainsGridPosition(location))
+                        {
+                            occupied.Add(room);
+                        }
+                    }
+                }
+            }
+
+            return occupied;
+        }
+
+        private Vector2[] ExcludeOccupiedRooms(Vector2[] locations) =>
+            locations.Where(location => !this._occupiedRooms.Any(room => room.ContainsGridPosition(location))).ToArray();
+
+        /// <summary>
+        ///     Tries the target's primary pattern, then each <see cref="TargetDescription.Alternatives"/> in order; the first with any match wins.
+        ///     <c>IsGenericRoomMatch</c> is <c>true</c> when the winning pattern was a bare <c>"*"</c> narrowed only by
+        ///     <see cref="TargetDescriptionAlternative.Rooms"/> (e.g. "Boss Room"), so callers can defer it to a more
+        ///     specifically-named target covering the same room.
+        /// </summary>
+        private (Vector2[]? Locations, bool IsGenericRoomMatch) ClusterTarget(TargetDescription target)
         {
             foreach (var alt in ((IEnumerable<TargetDescriptionAlternative>)(target.Alternatives ?? Array.Empty<TargetDescriptionAlternative>())).Prepend(target))
             {
                 var matched = this.ClusterPattern(alt.Name, alt.Rooms, alt.ExpectedCount, target.TargetType);
                 if (matched != null)
                 {
-                    return matched;
+                    return (matched, alt.Name == "*" && alt.Rooms is { Length: > 0 });
                 }
             }
 
-            return null;
+            return (null, false);
         }
 
         private Vector2[]? ClusterPattern(string namePattern, string[]? rooms, int expectedCount, TargetType targetType)
@@ -357,10 +411,14 @@ namespace OriathHub.Plugins.Radar
 
             foreach (var target in matchedTargets)
             {
-                var locations = this.ClusterTarget(target);
+                var (locations, isGenericRoomMatch) = this.ClusterTarget(target);
                 if (locations is { Length: > 0 })
                 {
-                    this._clusteredTargets[target.EqualityId] = new ClusteredTarget(target, locations);
+                    var finalLocations = isGenericRoomMatch ? this.ExcludeOccupiedRooms(locations) : locations;
+                    if (finalLocations.Length > 0)
+                    {
+                        this._clusteredTargets[target.EqualityId] = new ClusteredTarget(target, finalLocations);
+                    }
                 }
             }
         }
