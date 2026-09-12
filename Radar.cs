@@ -25,9 +25,9 @@ namespace OriathHub.Plugins.Radar
     using SixLabors.ImageSharp.Processing;
 
     /// <summary>
-    /// <see cref="Radar"/> plugin.
+    ///     <see cref="Radar"/> plugin.
     /// </summary>
-    public sealed class Radar : PluginBase
+    public sealed partial class Radar : PluginBase
     {
         private const string TempleTgtPrefix = "Metadata/Terrain/Leagues/Incursion/Tiles/Features/Waygates/WaygateDevice";
         private const string StoneCircleTgtPrefix = "Metadata/Terrain/Gallows/Leagues/StoneCircle/Tiles/StoneCircle_";
@@ -39,8 +39,8 @@ namespace OriathHub.Plugins.Radar
         private RadarSettings Settings = new();
 
         /// <summary>
-        /// If we don't do this, user will be asked to
-        /// setup the culling window everytime they open the game.
+        ///     If we don't do this, user will be asked to
+        ///     setup the culling window everytime they open the game.
         /// </summary>
         private bool skipOneSettingChange = false;
         private bool isAddNewPOIHeaderOpened = false;
@@ -48,6 +48,7 @@ namespace OriathHub.Plugins.Radar
         private ActiveCoroutine? onForegroundChange;
         private ActiveCoroutine? onGameClose;
         private ActiveCoroutine? onAreaChange;
+        private ActiveCoroutine? onEntityTargetCheck;
 
         private string currentAreaName = string.Empty;
         private string currentAreaHash = string.Empty;
@@ -91,6 +92,7 @@ namespace OriathHub.Plugins.Radar
 
         private IntPtr walkableMapTexture = IntPtr.Zero;
         private Vector2 walkableMapDimension = Vector2.Zero;
+        private long nextMapTextureRetryTick;
         private readonly Dictionary<string, Vector2> textHalfSizeCache = new(StringComparer.Ordinal);
         private readonly Dictionary<int, Vector2> poiIndexHalfSizeCache = new();
 
@@ -99,12 +101,6 @@ namespace OriathHub.Plugins.Radar
         private Vector2 _debugWinSize = Vector2.Zero;
 
         private string SettingPathname => Path.Join(this.DllDirectory, "config", "settings.txt");
-
-        private string ImportantTgtPathName => Path.Join(this.DllDirectory, "important_tgt_files.txt");
-
-        private string BossArenaTgtPathName => Path.Join(this.DllDirectory, "boss_arena_tgt_files.txt");
-
-        private string StairsTgtPathName => Path.Join(this.DllDirectory, "stairs_tgt_files.txt");
 
         /// <inheritdoc/>
         public override string Name => "Radar";
@@ -117,7 +113,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.7";
+        public override string Version => "1.0.8";
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -140,18 +136,12 @@ namespace OriathHub.Plugins.Radar
                 }
             }
 
-            if (ImGui.ColorEdit4("Map Color", ref this.Settings.WalkableMapColor))
-            {
-                if (this.walkableMapTexture != IntPtr.Zero)
-                    this.ReloadMapTexture();
-            }
+            ImGui.ColorEdit4("Map Color", ref this.Settings.WalkableMapColor);
+            this.ReloadMapTextureWhenEditCompletes();
 
             ImGui.SetNextItemWidth(180f);
-            if (ImGui.SliderInt("Map Border Thickness", ref this.Settings.WalkableMapBorderThickness, 1, 8))
-            {
-                if (this.walkableMapTexture != IntPtr.Zero)
-                    this.ReloadMapTexture();
-            }
+            ImGui.SliderInt("Map Border Thickness", ref this.Settings.WalkableMapBorderThickness, 1, 8);
+            this.ReloadMapTextureWhenEditCompletes();
 
             ImGui.Separator();
             ImGui.Checkbox("Show terrain points of interest (Terrain POI)", ref this.Settings.ShowImportantPOI);
@@ -162,6 +152,14 @@ namespace OriathHub.Plugins.Radar
             ImGui.Checkbox("Hide entities outside the network bubble", ref this.Settings.HideOutsideNetworkBubble);
             ImGui.Checkbox("Show Player Names", ref this.Settings.ShowPlayersNames);
             ImGuiHelper.ToolTip("Does not work while player is in the Scourge.");
+        }
+
+        private void ReloadMapTextureWhenEditCompletes()
+        {
+            if (ImGui.IsItemDeactivatedAfterEdit() && this.walkableMapTexture != IntPtr.Zero)
+            {
+                this.ReloadMapTexture();
+            }
         }
 
         /// <inheritdoc/>
@@ -261,37 +259,28 @@ namespace OriathHub.Plugins.Radar
                 ImGui.SliderFloat("Line thickness", ref this.Settings.POIPathLineThickness, 1f, 8f);
                 if (ImGui.TreeNode("Path colors (per POI in current area)"))
                 {
-                    var instance = Core.States.InGameStateObject.CurrentAreaInstance;
                     var seenLabels = new HashSet<string>();
                     int defaultIdx = 0;
-                    void showColors(Dictionary<string, string> tgts)
+                    foreach (var clustered in this._clusteredTargets.Values)
                     {
-                        foreach (var tile in tgts)
+                        var label = string.IsNullOrEmpty(clustered.Target.DisplayName) ? clustered.Target.Name : clustered.Target.DisplayName;
+                        if (!seenLabels.Add(label)) continue;
+                        var fallback = DefaultPathColors[defaultIdx % DefaultPathColors.Length];
+                        defaultIdx++;
+
+                        bool enabled = !this.Settings.POIPathEnabled.TryGetValue(label, out var e) || e;
+                        if (ImGui.Checkbox($"##pathon_{label}", ref enabled))
                         {
-                            if (!instance.TgtTilesLocations.ContainsKey(tile.Key)) continue;
-                            if (!seenLabels.Add(tile.Value)) continue;
-                            var label = tile.Value;
-                            var fallback = DefaultPathColors[defaultIdx % DefaultPathColors.Length];
-                            defaultIdx++;
-
-                            bool enabled = !this.Settings.POIPathEnabled.TryGetValue(label, out var e) || e;
-                            if (ImGui.Checkbox($"##pathon_{label}", ref enabled))
-                            {
-                                this.Settings.POIPathEnabled[label] = enabled;
-                                this._lastPathfindPlayerPos = new Vector2(float.MaxValue, float.MaxValue);
-                            }
-
-                            ImGui.SameLine();
-                            var col = this.Settings.POIPathColors.TryGetValue(label, out var stored) ? stored : fallback;
-                            if (ImGui.ColorEdit4($"{label}##pathcol_{label}", ref col))
-                                this.Settings.POIPathColors[label] = col;
+                            this.Settings.POIPathEnabled[label] = enabled;
+                            this._lastPathfindPlayerPos = new Vector2(float.MaxValue, float.MaxValue);
                         }
+
+                        ImGui.SameLine();
+                        var col = this.Settings.POIPathColors.TryGetValue(label, out var stored) ? stored : fallback;
+                        if (ImGui.ColorEdit4($"{label}##pathcol_{label}", ref col))
+                            this.Settings.POIPathColors[label] = col;
                     }
 
-                    if (this.Settings.ImportantTgts.TryGetValue(this.currentAreaName, out var areaTgts))
-                        showColors(areaTgts);
-                    if (this.Settings.ImportantTgts.TryGetValue("common", out var commonTgts))
-                        showColors(commonTgts);
                     if (seenLabels.Count == 0)
                         ImGui.TextDisabled("No POI detected in the current area.");
                     ImGui.TreePop();
@@ -320,8 +309,6 @@ namespace OriathHub.Plugins.Radar
                 "Icons for Incursion Waygate devices (Vaal Ruins).");
             this.Settings.DrawIconsSettingToImGui("Runed Monolith Icons", this.Settings.RunedMonolithIcons,
                 "Icons for Stone Circle terrain features.");
-            this.Settings.DrawIconsSettingToImGui("Boss Icons", this.Settings.BossIcons,
-                "Icons for map boss arenas.");
         }
 
         /// <inheritdoc/>
@@ -350,14 +337,14 @@ namespace OriathHub.Plugins.Radar
             }, "maphack walkable terrain map"),
             new SettingSearchEntry("Settings", "Map Color", () =>
             {
-                if (ImGui.ColorEdit4("Map Color", ref this.Settings.WalkableMapColor) && this.walkableMapTexture != IntPtr.Zero)
-                    this.ReloadMapTexture();
+                ImGui.ColorEdit4("Map Color", ref this.Settings.WalkableMapColor);
+                this.ReloadMapTextureWhenEditCompletes();
             }),
             new SettingSearchEntry("Settings", "Map Border Thickness", () =>
             {
                 ImGui.SetNextItemWidth(180f);
-                if (ImGui.SliderInt("Map Border Thickness", ref this.Settings.WalkableMapBorderThickness, 1, 8) && this.walkableMapTexture != IntPtr.Zero)
-                    this.ReloadMapTexture();
+                ImGui.SliderInt("Map Border Thickness", ref this.Settings.WalkableMapBorderThickness, 1, 8);
+                this.ReloadMapTextureWhenEditCompletes();
             }),
             new SettingSearchEntry("Settings", "Show terrain points of interest (Terrain POI)",
                 () => ImGui.Checkbox("Show terrain points of interest (Terrain POI)", ref this.Settings.ShowImportantPOI), "terrain poi"),
@@ -502,11 +489,14 @@ namespace OriathHub.Plugins.Radar
             this.onForegroundChange?.Cancel();
             this.onGameClose?.Cancel();
             this.onAreaChange?.Cancel();
+            this.onEntityTargetCheck?.Cancel();
             this.onMove = null;
             this.onForegroundChange = null;
             this.onGameClose = null;
             this.onAreaChange = null;
+            this.onEntityTargetCheck = null;
             this.CleanUpRadarPluginCaches();
+            this.Settings.RemoveIconTextures();
         }
 
         /// <inheritdoc/>
@@ -519,43 +509,32 @@ namespace OriathHub.Plugins.Radar
 
             if (File.Exists(this.SettingPathname))
             {
-                var content = File.ReadAllText(this.SettingPathname);
-                // Skip individual fields that fail (e.g. POIPathColors migrated from List to Dict).
-                var lenient = new JsonSerializerSettings { Error = (_, e) => e.ErrorContext.Handled = true };
-                this.Settings = JsonConvert.DeserializeObject<RadarSettings>(content, lenient) ?? new RadarSettings();
-                // Saved settings store absolute paths. Re-resolve all icon paths against
-                // the current DLL directory so the plugin survives folder renames/moves.
-                this.Settings.ReinitializeIconPaths(this.DllDirectory);
+                try
+                {
+                    var content = File.ReadAllText(this.SettingPathname);
+                    // Skip individual fields that fail (e.g. POIPathColors migrated from List to Dict).
+                    var lenient = new JsonSerializerSettings { Error = (_, e) => e.ErrorContext.Handled = true };
+                    this.Settings = JsonConvert.DeserializeObject<RadarSettings>(content, lenient) ?? new RadarSettings();
+                    // Saved settings store absolute paths. Re-resolve all icon paths against
+                    // the current DLL directory so the plugin survives folder renames/moves.
+                    this.Settings.ReinitializeIconPaths(this.DllDirectory);
+                }
+                catch (Exception ex) when (ex is IOException or JsonException)
+                {
+                    Log.Error($"Unable to load Radar settings from {this.SettingPathname}: {ex.Message}", this.Name);
+                    this.Settings = new RadarSettings();
+                }
             }
 
-            if (File.Exists(this.ImportantTgtPathName))
-            {
-                var tgtfiles = File.ReadAllText(this.ImportantTgtPathName);
-                this.Settings.ImportantTgts = JsonConvert.DeserializeObject
-                    <Dictionary<string, Dictionary<string, string>>>(tgtfiles)
-                    ?? new Dictionary<string, Dictionary<string, string>>();
-            }
-
-            if (File.Exists(this.BossArenaTgtPathName))
-            {
-                var bossfiles = File.ReadAllText(this.BossArenaTgtPathName);
-                this.Settings.BossArenaTgts = JsonConvert.DeserializeObject
-                    <Dictionary<string, string>>(bossfiles) ?? new Dictionary<string, string>();
-            }
-
-            if (File.Exists(this.StairsTgtPathName))
-            {
-                var stairsfiles = File.ReadAllText(this.StairsTgtPathName);
-                this.Settings.StairsTgts = JsonConvert.DeserializeObject
-                    <Dictionary<string, string>>(stairsfiles) ?? new Dictionary<string, string>();
-            }
+            this.LoadTargets();
 
             this.Settings.AddDefaultIcons(this.DllDirectory);
 
-            this.onMove = CoroutineHandler.Start(this.OnMove());
-            this.onForegroundChange = CoroutineHandler.Start(this.OnForegroundChange());
-            this.onGameClose = CoroutineHandler.Start(this.OnClose());
-            this.onAreaChange = CoroutineHandler.Start(this.ClearCachesAndUpdateAreaInfo());
+            this.onMove = this.StartCoroutine(this.OnMove(), "Radar.OnMove");
+            this.onForegroundChange = this.StartCoroutine(this.OnForegroundChange(), "Radar.OnForegroundChange");
+            this.onGameClose = this.StartCoroutine(this.OnClose(), "Radar.OnClose");
+            this.onAreaChange = this.StartCoroutine(this.ClearCachesAndUpdateAreaInfo(), "Radar.OnAreaChange");
+            this.onEntityTargetCheck = this.StartCoroutine(this.CheckEntityTargets(), "Radar.CheckEntityTargets");
             this.GenerateMapTexture();
         }
 
@@ -566,26 +545,11 @@ namespace OriathHub.Plugins.Radar
             var settingsData = JsonConvert.SerializeObject(this.Settings, Formatting.Indented);
             File.WriteAllText(this.SettingPathname, settingsData);
 
-            if (this.Settings.ImportantTgts.Count > 0)
+            if (this._targetDescriptions.Count > 0)
             {
-                var tgtfiles = JsonConvert.SerializeObject(
-                    this.Settings.ImportantTgts, Formatting.Indented);
-                File.WriteAllText(this.ImportantTgtPathName, tgtfiles);
+                this.SaveTargets();
             }
 
-            if (this.Settings.BossArenaTgts.Count > 0)
-            {
-                var bossfiles = JsonConvert.SerializeObject(
-                    this.Settings.BossArenaTgts, Formatting.Indented);
-                File.WriteAllText(this.BossArenaTgtPathName, bossfiles);
-            }
-
-            if (this.Settings.StairsTgts.Count > 0)
-            {
-                var stairsfiles = JsonConvert.SerializeObject(
-                    this.Settings.StairsTgts, Formatting.Indented);
-                File.WriteAllText(this.StairsTgtPathName, stairsfiles);
-            }
         }
 
         private void DrawLargeMap(Vector2 mapCenter)
@@ -600,9 +564,13 @@ namespace OriathHub.Plugins.Radar
                 // The terrain grid may only stream in a few frames after the area change (e.g. Trial
                 // of the Sekhemas rooms), so the one-shot generation on AreaChanged can run too early.
                 // Retry here once the walkable grid is available, then stop (texture becomes non-zero).
-                if (Core.States.InGameStateObject.CurrentAreaInstance.GridWalkableData.Length > 0)
+                if (Environment.TickCount64 >= this.nextMapTextureRetryTick &&
+                    Core.States.InGameStateObject.CurrentAreaInstance.GridWalkableData.Length > 0)
                 {
-                    this.GenerateMapTexture();
+                    if (!this.GenerateMapTexture())
+                    {
+                        this.nextMapTextureRetryTick = Environment.TickCount64 + 1000;
+                    }
                 }
 
                 if (this.walkableMapTexture == IntPtr.Zero)
@@ -677,7 +645,7 @@ namespace OriathHub.Plugins.Radar
             void drawString(string text, Vector2 location, Vector2 stringImGuiSize, bool drawBackground)
             {
                 float height = 0;
-                if (currentAreaInstance.GridHeightData.Length > 0 &&
+                if (location.X >= 0 && location.Y >= 0 && currentAreaInstance.GridHeightData.Length > 0 &&
                     location.Y < currentAreaInstance.GridHeightData.Length &&
                     location.X < currentAreaInstance.GridHeightData[0].Length)
                 {
@@ -734,33 +702,13 @@ namespace OriathHub.Plugins.Radar
             }
             if (this.Settings.ShowImportantPOI)
             {
-                if (this.Settings.ImportantTgts.TryGetValue(this.currentAreaName, out var importantTgtsOfCurrentArea))
+                foreach (var clustered in this._clusteredTargets.Values)
                 {
-                    foreach (var tile in importantTgtsOfCurrentArea)
+                    var label = string.IsNullOrEmpty(clustered.Target.DisplayName) ? clustered.Target.Name : clustered.Target.DisplayName;
+                    var strSize = this.GetTextHalfSize(label);
+                    for (var i = 0; i < clustered.Locations.Length; i++)
                     {
-                        if (currentAreaInstance.TgtTilesLocations.TryGetValue(tile.Key, out var locations))
-                        {
-                            var strSize = this.GetTextHalfSize(tile.Value);
-                            for (var i = 0; i < locations.Count; i++)
-                            {
-                                drawString(tile.Value, locations[i], strSize, this.Settings.EnablePOIBackground);
-                            }
-                        }
-                    }
-                }
-
-                if (this.Settings.ImportantTgts.TryGetValue("common", out var importantTgtsOfAllAreas))
-                {
-                    foreach (var tile in importantTgtsOfAllAreas)
-                    {
-                        if (currentAreaInstance.TgtTilesLocations.TryGetValue(tile.Key, out var locations))
-                        {
-                            var strSize = this.GetTextHalfSize(tile.Value);
-                            for (var i = 0; i < locations.Count; i++)
-                            {
-                                drawString(tile.Value, locations[i], strSize, this.Settings.EnablePOIBackground);
-                            }
-                        }
+                        drawString(label, clustered.Locations[i], strSize, this.Settings.EnablePOIBackground);
                     }
                 }
             }
@@ -803,7 +751,7 @@ namespace OriathHub.Plugins.Radar
                             float h = 0f;
                             int ix = (int)gridPos.X;
                             int iy = (int)gridPos.Y;
-                            if (currentAreaInstance.GridHeightData.Length > 0 &&
+                            if (ix >= 0 && iy >= 0 && currentAreaInstance.GridHeightData.Length > 0 &&
                                 iy < currentAreaInstance.GridHeightData.Length &&
                                 ix < currentAreaInstance.GridHeightData[0].Length)
                             {
@@ -852,24 +800,6 @@ namespace OriathHub.Plugins.Radar
                         continue;
                     this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, templeIcon, iconSizeMultiplier, shiftUp: true);
                 }
-                else if (this.Settings.BossArenaTgts.ContainsKey(tgtKV.Key))
-                {
-                    if (!this.Settings.IsGroupEnabled("Boss Icons") ||
-                        !this.Settings.IsItemEnabled("Boss Icons", "Boss Arena"))
-                        continue;
-                    if (!this.Settings.BossIcons.TryGetValue("Boss Arena", out var bossIcon))
-                        continue;
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, bossIcon, iconSizeMultiplier);
-                }
-                else if (this.Settings.StairsTgts.ContainsKey(tgtKV.Key))
-                {
-                    if (!this.Settings.IsGroupEnabled("BaseGame Icons") ||
-                        !this.Settings.IsItemEnabled("BaseGame Icons", "Stairs"))
-                        continue;
-                    if (!this.Settings.BaseIcons.TryGetValue("Stairs", out var stairsIcon))
-                        continue;
-                    this.DrawIconAtTgtLocations(fgDraw, mapCenter, pPos, playerRender, tgtKV.Value, stairsIcon, iconSizeMultiplier);
-                }
             }
         }
 
@@ -888,7 +818,7 @@ namespace OriathHub.Plugins.Radar
             {
                 var location = locations[i];
                 float height = 0;
-                if (currentAreaInstance.GridHeightData.Length > 0 &&
+                if (location.X >= 0 && location.Y >= 0 && currentAreaInstance.GridHeightData.Length > 0 &&
                     location.Y < currentAreaInstance.GridHeightData.Length &&
                     location.X < currentAreaInstance.GridHeightData[0].Length)
                 {
@@ -1213,6 +1143,7 @@ namespace OriathHub.Plugins.Radar
             this.CleanUpRadarPluginCaches();
             this.currentAreaHash = Core.States.InGameStateObject.CurrentAreaInstance.AreaHash;
             this.currentAreaName = Core.States.InGameStateObject.CurrentWorldInstance.AreaDetails.Id;
+            this.UpdateCurrentAreaTargets();
             // Terrain grid buffers can stream in a few frames after the area change (notably in
             // Trial of the Sekhemas rooms), so the texture may not be buildable yet. DrawLargeMap
             // retries until the walkable grid is available.
@@ -1297,14 +1228,15 @@ namespace OriathHub.Plugins.Radar
         {
             this.walkableMapTexture = IntPtr.Zero;
             this.walkableMapDimension = Vector2.Zero;
+            this.nextMapTextureRetryTick = 0;
             Core.Overlay.RemoveImage("walkable_map");
         }
 
-        private void GenerateMapTexture()
+        private bool GenerateMapTexture()
         {
             if (Core.States.GameCurrentState is not (GameStateTypes.InGameState or GameStateTypes.EscapeState))
             {
-                return;
+                return false;
             }
 
             var instance = Core.States.InGameStateObject.CurrentAreaInstance;
@@ -1314,13 +1246,13 @@ namespace OriathHub.Plugins.Radar
             var worldToGridHeightMultiplier = instance.WorldToGridConvertor * 2f;
             if (bytesPerRow <= 0)
             {
-                return;
+                return false;
             }
 
             var mapEdgeDetector = new MapEdgeDetector(mapWalkableData, bytesPerRow);
             if (mapEdgeDetector.TotalRows <= 0)
             {
-                return;
+                return false;
             }
 
             var configuration = Configuration.Default.Clone();
@@ -1405,6 +1337,7 @@ namespace OriathHub.Plugins.Radar
 
             Core.Overlay.AddOrGetImagePointer("walkable_map", image, false, out var t);
             this.walkableMapTexture = t;
+            return t != IntPtr.Zero;
         }
 
         private static bool IsRitualComplete(Entity entity)
@@ -1582,13 +1515,7 @@ namespace OriathHub.Plugins.Radar
                     !string.IsNullOrEmpty(this.tmpTileName) &&
                     !string.IsNullOrEmpty(this.tmpDisplayName))
                 {
-                    if (!this.Settings.ImportantTgts.ContainsKey(key))
-                    {
-                        this.Settings.ImportantTgts[key] = new();
-                    }
-
-                    this.Settings.ImportantTgts[key]
-                        [this.tmpTileName] = this.tmpDisplayName;
+                    this.SetLiteralTarget(key, this.tmpTileName, this.tmpDisplayName);
 
                     this.tmpTileName = string.Empty;
                     this.tmpDisplayName = string.Empty;
@@ -1600,23 +1527,20 @@ namespace OriathHub.Plugins.Radar
         {
             if (ImGui.TreeNode($"Important Terrain POIs common for all Areas"))
             {
-                if (this.Settings.ImportantTgts.ContainsKey("common"))
+                foreach (var tgt in this.GetLiteralTargets("common"))
                 {
-                    foreach (var tgt in this.Settings.ImportantTgts["common"])
+                    if (ImGui.SmallButton($"Delete##{tgt.Name}"))
                     {
-                        if (ImGui.SmallButton($"Delete##{tgt.Key}"))
-                        {
-                            this.Settings.ImportantTgts["common"].Remove(tgt.Key);
-                        }
+                        this.RemoveLiteralTarget("common", tgt.Name);
+                    }
 
-                        ImGui.SameLine();
-                        ImGui.Text($"POI Path: {tgt.Key}, Display: {tgt.Value}");
-                        ImGuiHelper.ToolTip("Click me to Modify.");
-                        if (ImGui.IsItemClicked())
-                        {
-                            this.tmpTileName = tgt.Key;
-                            this.tmpDisplayName = tgt.Value;
-                        }
+                    ImGui.SameLine();
+                    ImGui.Text($"POI Path: {tgt.Name}, Display: {tgt.DisplayName}");
+                    ImGuiHelper.ToolTip("Click me to Modify.");
+                    if (ImGui.IsItemClicked())
+                    {
+                        this.tmpTileName = tgt.Name;
+                        this.tmpDisplayName = tgt.DisplayName ?? string.Empty;
                     }
                 }
 
@@ -1625,23 +1549,20 @@ namespace OriathHub.Plugins.Radar
 
             if (ImGui.TreeNode($"Important Terrain POIs in Area: {this.currentAreaName}##import_time_in_area"))
             {
-                if (this.Settings.ImportantTgts.ContainsKey(this.currentAreaName))
+                foreach (var tgt in this.GetLiteralTargets(this.currentAreaName))
                 {
-                    foreach (var tgt in this.Settings.ImportantTgts[this.currentAreaName])
+                    if (ImGui.SmallButton($"Delete##{tgt.Name}"))
                     {
-                        if (ImGui.SmallButton($"Delete##{tgt.Key}"))
-                        {
-                            this.Settings.ImportantTgts[this.currentAreaName].Remove(tgt.Key);
-                        }
+                        this.RemoveLiteralTarget(this.currentAreaName, tgt.Name);
+                    }
 
-                        ImGui.SameLine();
-                        ImGui.Text($"POI Path: {tgt.Key}, Display: {tgt.Value}");
-                        ImGuiHelper.ToolTip("Click me to Modify.");
-                        if (ImGui.IsItemClicked())
-                        {
-                            this.tmpTileName = tgt.Key;
-                            this.tmpDisplayName = tgt.Value;
-                        }
+                    ImGui.SameLine();
+                    ImGui.Text($"POI Path: {tgt.Name}, Display: {tgt.DisplayName}");
+                    ImGuiHelper.ToolTip("Click me to Modify.");
+                    if (ImGui.IsItemClicked())
+                    {
+                        this.tmpTileName = tgt.Name;
+                        this.tmpDisplayName = tgt.DisplayName ?? string.Empty;
                     }
                 }
 
@@ -1693,7 +1614,6 @@ namespace OriathHub.Plugins.Radar
             // Render boxes via the foreground draw list (visible in all modes).
             var drawList = ImGui.GetForegroundDrawList();
             var pad = new Vector2(3, 2);
-            this.Settings.ImportantTgts.TryGetValue(this.currentAreaName, out var areaPoIs);
 
             var thisFrameRects = new List<(Vector2 min, Vector2 max, string key)>();
 
@@ -1707,7 +1627,7 @@ namespace OriathHub.Plugins.Radar
 
                 if (!skip)
                 {
-                    bool alreadyAdded = areaPoIs?.ContainsKey(tgtKV.Key) ?? false;
+                    bool alreadyAdded = this.HasLiteralTarget(this.currentAreaName, tgtKV.Key);
                     uint labelColor = alreadyAdded
                         ? ImGuiHelper.Color(100, 255, 100, 255)
                         : ImGuiHelper.Color(255, 200, 100, 255);
@@ -1721,7 +1641,7 @@ namespace OriathHub.Plugins.Radar
                         var gridPos = tgtKV.Value[i];
                         float height = 0;
                         int ix = (int)gridPos.X, iy = (int)gridPos.Y;
-                        if (area.GridHeightData.Length > 0 &&
+                        if (ix >= 0 && iy >= 0 && area.GridHeightData.Length > 0 &&
                             iy < area.GridHeightData.Length &&
                             ix < area.GridHeightData[0].Length)
                             height = area.GridHeightData[iy][ix];
@@ -1760,7 +1680,7 @@ namespace OriathHub.Plugins.Radar
 
                             if (ImGui.IsItemHovered())
                             {
-                                if (alreadyAdded && areaPoIs != null && areaPoIs.TryGetValue(tgtKV.Key, out var dn))
+                                if (alreadyAdded && this.GetLiteralTargetDisplayName(this.currentAreaName, tgtKV.Key) is { } dn)
                                     ImGui.SetTooltip($"{tgtKV.Key}\nDisplay: {dn}\nClick to remove");
                                 else
                                     ImGui.SetTooltip($"{tgtKV.Key}\nClick to add");
@@ -1823,25 +1743,22 @@ namespace OriathHub.Plugins.Radar
         private void AddPOIWithDisplayName(string path, string displayName)
         {
             if (string.IsNullOrEmpty(this.currentAreaName)) return;
-            if (!this.Settings.ImportantTgts.ContainsKey(this.currentAreaName))
-                this.Settings.ImportantTgts[this.currentAreaName] = new();
-            this.Settings.ImportantTgts[this.currentAreaName][path] = displayName;
+            this.SetLiteralTarget(this.currentAreaName, path, displayName);
         }
 
         private void AddPOIForCurrentArea(string path)
         {
             if (string.IsNullOrEmpty(this.currentAreaName)) return;
+            if (this.HasLiteralTarget(this.currentAreaName, path)) return;
             var displayName = path.AsSpan(path.LastIndexOf('/') + 1).ToString();
-            if (!this.Settings.ImportantTgts.ContainsKey(this.currentAreaName))
-                this.Settings.ImportantTgts[this.currentAreaName] = new();
-            this.Settings.ImportantTgts[this.currentAreaName].TryAdd(path, displayName);
+            this.SetLiteralTarget(this.currentAreaName, path, displayName);
         }
 
         private void TogglePOIForCurrentArea(string path)
         {
             if (string.IsNullOrEmpty(this.currentAreaName)) return;
-            if (this.Settings.ImportantTgts.TryGetValue(this.currentAreaName, out var area) && area.ContainsKey(path))
-                area.Remove(path);
+            if (this.HasLiteralTarget(this.currentAreaName, path))
+                this.RemoveLiteralTarget(this.currentAreaName, path);
             else
                 this.AddPOIForCurrentArea(path);
         }
@@ -1891,8 +1808,7 @@ namespace OriathHub.Plugins.Radar
 
                 if (!skip)
                 {
-                    bool alreadyAdded = this.Settings.ImportantTgts.TryGetValue(this.currentAreaName, out var areaTgts)
-                        && areaTgts.ContainsKey(tgtKV.Key);
+                    bool alreadyAdded = this.HasLiteralTarget(this.currentAreaName, tgtKV.Key);
                     if (ImGui.Selectable($"[{counter}]  {tgtKV.Key}  (x{tgtKV.Value.Count})##poi{counter}", alreadyAdded))
                         this.TogglePOIForCurrentArea(tgtKV.Key);
                     if (ImGui.IsItemHovered())
@@ -1947,39 +1863,30 @@ namespace OriathHub.Plugins.Radar
             if (bytesPerRow <= 0 || walkableData.Length == 0)
                 return;
 
-            // Group by label: multiple metadata keys often share a label (e.g. all "Mud Burrow" variants).
-            // For each unique label, find the single closest tile location across all matching keys.
+            // Group by label: multiple targets/clusters often share a display name. For each unique
+            // label, find the single closest marker location across all of that label's targets.
             var labelToClosest = new Dictionary<string, Vector2>();
-            void collect(Dictionary<string, string> tgts)
+            foreach (var clustered in this._clusteredTargets.Values)
             {
-                foreach (var tile in tgts)
+                var label = string.IsNullOrEmpty(clustered.Target.DisplayName) ? clustered.Target.Name : clustered.Target.DisplayName;
+                if (this.Settings.POIPathEnabled.TryGetValue(label, out var en) && !en)
+                    continue;
+                foreach (var loc in clustered.Locations)
                 {
-                    if (!instance.TgtTilesLocations.TryGetValue(tile.Key, out var locs) || locs.Count == 0)
-                        continue;
-                    var label = tile.Value;
-                    if (this.Settings.POIPathEnabled.TryGetValue(label, out var en) && !en)
-                        continue;
-                    foreach (var loc in locs)
+                    if (!labelToClosest.TryGetValue(label, out var current) ||
+                        Vector2.DistanceSquared(loc, playerGridPos) < Vector2.DistanceSquared(current, playerGridPos))
                     {
-                        if (!labelToClosest.TryGetValue(label, out var current) ||
-                            Vector2.DistanceSquared(loc, playerGridPos) < Vector2.DistanceSquared(current, playerGridPos))
-                        {
-                            labelToClosest[label] = loc;
-                        }
+                        labelToClosest[label] = loc;
                     }
                 }
             }
-
-            if (this.Settings.ImportantTgts.TryGetValue(this.currentAreaName, out var areaTargets))
-                collect(areaTargets);
-            if (this.Settings.ImportantTgts.TryGetValue("common", out var commonTargets))
-                collect(commonTargets);
 
             if (labelToClosest.Count == 0)
                 return;
 
             var uniqueTargets = labelToClosest.ToList();
-            var ct = this._pathCts.Token;
+            var pathCts = this._pathCts;
+            var ct = pathCts.Token;
             var start = playerGridPos;
             this._pathTask = Task.Run(() =>
             {
@@ -1994,7 +1901,7 @@ namespace OriathHub.Plugins.Radar
                 }
                 // Publish the full set in one atomic swap. The previously computed lines stay
                 // visible until the new route is fully ready, so nothing blinks out mid-recompute.
-                if (!ct.IsCancellationRequested)
+                if (!ct.IsCancellationRequested && ReferenceEquals(this._pathCts, pathCts))
                     this._poiPaths = entries;
             }, ct);
         }
@@ -2017,14 +1924,34 @@ namespace OriathHub.Plugins.Radar
             // Cancel any in-flight compute and hand out a fresh token source — the cancelled one
             // would otherwise abort every future compute. The old task observes its cancelled token
             // and won't publish; nulling the handle lets the new area start computing immediately.
-            this._pathCts.Cancel();
+            var oldPathCts = this._pathCts;
+            var oldPathTask = this._pathTask;
+            oldPathCts.Cancel();
             this._pathCts = new CancellationTokenSource();
             this._pathTask = null;
+            if (oldPathTask is null || oldPathTask.IsCompleted)
+            {
+                oldPathCts.Dispose();
+            }
+            else
+            {
+                _ = oldPathTask.ContinueWith(
+                    _ => oldPathCts.Dispose(),
+                    CancellationToken.None,
+                    TaskContinuationOptions.None,
+                    TaskScheduler.Default);
+            }
             this._poiPaths = Array.Empty<PathCacheEntry>();
             this._lastPathfindPlayerPos = new Vector2(float.MaxValue, float.MaxValue);
+            this._targetDescriptionsInArea = new();
+            this._currentZoneEntityPatterns = new();
+            this._allTargetLocations = new();
+            this._clusteredTargets = new();
         }
     }
 
-    /// <summary>A cached pathfinding result for a single POI.</summary>
+    /// <summary>
+    ///     A cached pathfinding result for a single POI.
+    /// </summary>
     internal sealed record PathCacheEntry(string Label, Vector2 Goal, List<Vector2>? Path);
 }

@@ -8,12 +8,12 @@ namespace OriathHub.Plugins.Radar
     using OriathHub;
 
     /// <summary>
-    /// A class to store the currently selected icon.
-    /// This class assumes that the icon sprite (png) file has:
-    ///   (1) Arranged icons in the center of the Icon box.
-    ///   (2) All icon boxes are of exact same size.
-    ///   (3) There is no padding/margins/buffer-pixel between icon boxes
-    ///       (i.e. where 1 box ends, another starts).
+    ///     A class to store the currently selected icon.
+    ///     This class assumes that the icon sprite (png) file has:
+    ///     (1) Arranged icons in the center of the Icon box.
+    ///     (2) All icon boxes are of exact same size.
+    ///     (3) There is no padding/margins/buffer-pixel between icon boxes
+    ///     (i.e. where 1 box ends, another starts).
     /// </summary>
     public class IconPicker
     {
@@ -27,7 +27,7 @@ namespace OriathHub.Plugins.Radar
         private Vector2 iconDimension = Vector2.One;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="IconPicker"/> class.
+        ///     Initializes a new instance of the <see cref="IconPicker"/> class.
         /// </summary>
         /// <param name="filepathname">file pathname to the icon sprite file.</param>
         /// <param name="clicked">Row and Column information of the icon user has clicked.</param>
@@ -48,7 +48,7 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="IconPicker"/> class.
+        ///     Initializes a new instance of the <see cref="IconPicker"/> class.
         /// </summary>
         /// <param name="filepathname">file pathname to the icon sprite file.</param>
         /// <param name="x">Default Icon Column number. Note: start from 0.</param>
@@ -57,11 +57,6 @@ namespace OriathHub.Plugins.Radar
         /// <param name="iconSize">Size of a single icon of the given sprite in pixel.</param>
         public IconPicker(string filepathname, int x, int y, int s, Vector2 iconSize)
         {
-            if (!File.Exists(filepathname))
-            {
-                throw new FileNotFoundException($"Missing Icons (sprite) file with name: {filepathname}");
-            }
-
             this.FilePathName = filepathname;
             this.Clicked = new(x, y);
             this.IconSize = iconSize;
@@ -70,46 +65,46 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Gets a value indicating which icon user has clicked.
+        ///     Gets a value indicating which icon user has clicked.
         /// </summary>
         public Vector2 Clicked { get; private set; } = Vector2.Zero;
 
         /// <summary>
-        /// Get a value indicating the single icon size in pixel.
+        ///     Get a value indicating the single icon size in pixel.
         /// </summary>
         public Vector2 IconSize { get; private set; } = Vector2.One;
 
         /// <summary>
-        /// Gets a value indicating how big you want to display the icon.
+        ///     Gets a value indicating how big you want to display the icon.
         /// </summary>
         public float IconScale => this.iconScale;
 
         /// <summary>
-        /// Gets the icon sprite file pathname.
+        ///     Gets the icon sprite file pathname.
         /// </summary>
         public string FilePathName { get; private set; } = string.Empty;
 
         /// <summary>
-        /// Gets the texture pointer.
+        ///     Gets the texture pointer.
         /// </summary>
         [JsonIgnore]
         public IntPtr TexturePtr { get; private set; } = IntPtr.Zero;
 
         /// <summary>
-        /// Gets the vector pointing to start (top left) of the Box.
+        ///     Gets the vector pointing to start (top left) of the Box.
         /// </summary>
         [JsonIgnore]
         public Vector2 UV0 { get; private set; } = Vector2.Zero;
 
         /// <summary>
-        /// Gets the vector pointing to end ( bottom right ) of the Box.
+        ///     Gets the vector pointing to end ( bottom right ) of the Box.
         /// </summary>
         [JsonIgnore]
         public Vector2 UV1 { get; private set; } = Vector2.Zero;
 
         /// <summary>
-        /// Show the Setting Widget for the selection of icon. This function assumes
-        /// that the ImGui window is already created.
+        ///     Show the Setting Widget for the selection of icon. This function assumes
+        ///     that the ImGui window is already created.
         /// </summary>
         public void ShowSettingWidget()
         {
@@ -121,6 +116,13 @@ namespace OriathHub.Plugins.Radar
 
             var buttonSize = new Vector2(ImGui.GetFontSize());
             Core.Overlay.AddOrGetImagePointer(this.FilePathName, false, out var p, out var w, out var h);
+
+            if (p == IntPtr.Zero || this.TexturePtr == IntPtr.Zero || w <= 0 || h <= 0)
+            {
+                ImGui.TextDisabled("Icon atlas unavailable");
+                ImGui.PopID();
+                return;
+            }
 
             if (ImGui.ImageButton("icon_picker", this.TexturePtr, buttonSize, this.UV0, this.UV1))
             {
@@ -136,9 +138,15 @@ namespace OriathHub.Plugins.Radar
                 var title = $"Icon Picker (Double click to select an item)";
                 if (ImGui.Begin(title, ref this.showPopUp, PopUpFlags))
                 {
-                    if (ImGui.IsWindowHovered() && ImGui.GetIO().MouseDoubleClicked[0])
+                    var imageMin = ImGui.GetCursorScreenPos();
+                    var imageSize = new Vector2(w, h);
+                    var imageMax = imageMin + imageSize;
+                    var mousePos = ImGui.GetIO().MouseClickedPos[0];
+                    var clickedImage = mousePos.X >= imageMin.X && mousePos.X < imageMax.X &&
+                        mousePos.Y >= imageMin.Y && mousePos.Y < imageMax.Y;
+                    if (ImGui.IsWindowHovered() && ImGui.GetIO().MouseDoubleClicked[0] && clickedImage)
                     {
-                        var clicked = ImGui.GetIO().MouseClickedPos[0] - ImGui.GetCursorScreenPos();
+                        var clicked = mousePos - imageMin;
                         var x = (int)(clicked.X / (w * this.iconDimension.X));
                         var y = (int)(clicked.Y / (h * this.iconDimension.Y));
                         this.Clicked = new Vector2(x, y);
@@ -150,7 +158,7 @@ namespace OriathHub.Plugins.Radar
                         this.showPopUp = false;
                     }
 
-                    ImGui.Image(p, new Vector2(w, h));
+                    ImGui.Image(p, imageSize);
                 }
 
                 ImGui.End();
@@ -160,10 +168,10 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Re-resolves this icon against <paramref name="baseDir"/> by taking only the
-        /// filename portion of the stored path and joining it to the new base directory.
-        /// Call this after JSON deserialization when the installation folder may have moved.
-        /// Does nothing if the resolved file does not exist.
+        ///     Re-resolves this icon against <paramref name="baseDir"/> by taking only the
+        ///     filename portion of the stored path and joining it to the new base directory.
+        ///     Call this after JSON deserialization when the installation folder may have moved.
+        ///     Does nothing if the resolved file does not exist.
         /// </summary>
         /// <param name="baseDir">The current plugin DLL directory.</param>
         public void ReinitializeFromDirectory(string baseDir)
@@ -179,9 +187,9 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Uploads the sprite icon file as texture and updates the class data.
-        /// Silently skips if the file is not found — stale absolute paths from
-        /// a previous install are re-resolved by <see cref="ReinitializeFromDirectory"/>.
+        ///     Uploads the sprite icon file as texture and updates the class data.
+        ///     Silently skips if the file is not found — stale absolute paths from
+        ///     a previous install are re-resolved by <see cref="ReinitializeFromDirectory"/>.
         /// </summary>
         private void Initialize()
         {
@@ -195,6 +203,13 @@ namespace OriathHub.Plugins.Radar
         private void UploadIconSpriteFile()
         {
             Core.Overlay.AddOrGetImagePointer(this.FilePathName, false, out var p, out var width, out var height);
+            if (p == IntPtr.Zero || width <= 0 || height <= 0)
+            {
+                this.TexturePtr = IntPtr.Zero;
+                this.iconDimension = Vector2.One;
+                return;
+            }
+
             this.iconDimension = new(this.IconSize.X / width, this.IconSize.Y / height);
             this.TexturePtr = p;
         }

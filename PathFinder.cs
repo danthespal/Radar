@@ -6,10 +6,10 @@ namespace OriathHub.Plugins.Radar
     using System.Threading;
 
     /// <summary>
-    /// Grid-cell-resolution A* pathfinder for the radar POI path feature.
-    /// Searches directly on the game's per-cell walkable data — no tile aggregation, no
-    /// walkability guessing — then string-pulls the result into the geometrically shortest
-    /// navigable path.
+    ///     Grid-cell-resolution A* pathfinder for the radar POI path feature.
+    ///     Searches directly on the game's per-cell walkable data — no tile aggregation, no
+    ///     walkability guessing — then string-pulls the result into the geometrically shortest
+    ///     navigable path.
     /// </summary>
     internal static class PathFinder
     {
@@ -19,6 +19,10 @@ namespace OriathHub.Plugins.Radar
         // but bounds runaway searches on open or disconnected maps.
         private const int MaxExpanded = 250_000;
 
+        // String-pulling is a rendering aid, not part of the pathfinding result. Bound its work so
+        // a long, obstacle-heavy route cannot keep a cancelled background task alive indefinitely.
+        private const int MaxStringPullCellTests = 200_000;
+
         // Spiral search radius (in cells) used to snap a start/goal that lands on a non-walkable
         // cell onto the nearest walkable one.
         private const int SnapRadius = TileSize; // up to one tile away
@@ -26,10 +30,10 @@ namespace OriathHub.Plugins.Radar
         private const float Sqrt2 = 1.41421356f;
 
         /// <summary>
-        /// Finds the shortest navigable path from <paramref name="startGrid"/> to
-        /// <paramref name="goalGrid"/> at single-cell resolution. Returns grid-space waypoints
-        /// after string pulling, or <c>null</c> when no path exists or the search was cancelled.
-        /// Call via <c>Task.Run</c> — synchronous but potentially slow.
+        ///     Finds the shortest navigable path from <paramref name="startGrid"/> to
+        ///     <paramref name="goalGrid"/> at single-cell resolution. Returns grid-space waypoints
+        ///     after string pulling, or <c>null</c> when no path exists or the search was cancelled.
+        ///     Call via <c>Task.Run</c> — synchronous but potentially slow.
         /// </summary>
         internal static List<Vector2>? FindPath(
             byte[] walkableData,
@@ -38,7 +42,7 @@ namespace OriathHub.Plugins.Radar
             Vector2 goalGrid,
             CancellationToken ct)
         {
-            if (walkableData.Length == 0 || bytesPerRow <= 0)
+            if (bytesPerRow <= 0 || walkableData.Length < bytesPerRow)
                 return null;
 
             // Cell grid dimensions, derived exactly as MapEdgeDetector does: two cells per byte
@@ -88,7 +92,7 @@ namespace OriathHub.Plugins.Radar
                 if (current == goal)
                 {
                     var raw = ReconstructPath(cameFrom, current);
-                    return ct.IsCancellationRequested ? null : StringPull(raw, walkableData, bytesPerRow);
+                    return ct.IsCancellationRequested ? null : StringPull(raw, walkableData, bytesPerRow, ct);
                 }
 
                 float currentG = gScore[current];
@@ -135,23 +139,48 @@ namespace OriathHub.Plugins.Radar
         // by an unobstructed straight line, then repeat. Collapses the cell staircase into the
         // shortest navigable polyline. Every segment is validated cell-by-cell, so the line never
         // crosses non-walkable terrain.
-        private static List<Vector2> StringPull(List<Vector2> path, byte[] data, int bytesPerRow)
+        private static List<Vector2>? StringPull(
+            List<Vector2> path,
+            byte[] data,
+            int bytesPerRow,
+            CancellationToken ct)
         {
             if (path.Count <= 2) return path;
 
             var result = new List<Vector2>(path.Count) { path[0] };
             int current = 0;
+            int cellTests = 0;
 
             while (current < path.Count - 1)
             {
+                if (ct.IsCancellationRequested)
+                    return null;
+
                 int furthest = current + 1;
                 for (int candidate = path.Count - 1; candidate > current + 1; candidate--)
                 {
-                    if (HasGridLineOfSight(path[current], path[candidate], data, bytesPerRow))
+                    if (!HasGridLineOfSight(
+                            path[current], path[candidate], data, bytesPerRow, ct, ref cellTests))
                     {
-                        furthest = candidate;
-                        break;
+                        if (ct.IsCancellationRequested)
+                            return null;
+                        if (cellTests >= MaxStringPullCellTests)
+                        {
+                            result.AddRange(path.GetRange(current + 1, path.Count - current - 1));
+                            return result;
+                        }
+
+                        continue;
                     }
+
+                    if (cellTests >= MaxStringPullCellTests)
+                    {
+                        result.AddRange(path.GetRange(current + 1, path.Count - current - 1));
+                        return result;
+                    }
+
+                    furthest = candidate;
+                    break;
                 }
                 result.Add(path[furthest]);
                 current = furthest;
@@ -162,7 +191,13 @@ namespace OriathHub.Plugins.Radar
 
         // Bresenham rasterisation at single-cell resolution. True only if every cell along the
         // line between the two grid positions is walkable.
-        private static bool HasGridLineOfSight(Vector2 from, Vector2 to, byte[] data, int bytesPerRow)
+        private static bool HasGridLineOfSight(
+            Vector2 from,
+            Vector2 to,
+            byte[] data,
+            int bytesPerRow,
+            CancellationToken ct,
+            ref int cellTests)
         {
             int x0 = (int)from.X, y0 = (int)from.Y;
             int x1 = (int)to.X, y1 = (int)to.Y;
@@ -176,6 +211,8 @@ namespace OriathHub.Plugins.Radar
 
             while (true)
             {
+                if (ct.IsCancellationRequested || cellTests++ >= MaxStringPullCellTests)
+                    return false;
                 if (!IsCellWalkable(data, bytesPerRow, x, y)) return false;
                 if (x == x1 && y == y1) return true;
 

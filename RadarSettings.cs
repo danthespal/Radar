@@ -10,7 +10,7 @@ namespace OriathHub.Plugins.Radar
     using OriathHub.Utils;
 
     /// <summary>
-    /// <see cref="Radar"/> plugin settings class.
+    ///     <see cref="Radar"/> plugin settings class.
     /// </summary>
     public sealed class RadarSettings
     {
@@ -26,253 +26,230 @@ namespace OriathHub.Plugins.Radar
         [JsonIgnore] private static readonly Dictionary<int, int> specialObjNumStage = new();
 
         /// <summary>
-        /// Multipler to apply to the Large Map icons
-        /// so they display correctly on the screen.
+        ///     Multipler to apply to the Large Map icons
+        ///     so they display correctly on the screen.
         /// </summary>
         public float LargeMapScaleMultiplier = 0.1738f;
 
         /// <summary>
-        /// When true, the Large Map Fix is computed automatically from the viewport
-        /// aspect ratio instead of using the manual <see cref="LargeMapScaleMultiplier"/>.
+        ///     When true, the Large Map Fix is computed automatically from the viewport
+        ///     aspect ratio instead of using the manual <see cref="LargeMapScaleMultiplier"/>.
         /// </summary>
         public bool AutoLargeMapScale = true;
 
         /// <summary>
-        /// Do not draw the Radar plugin stuff when game is in the background.
+        ///     Do not draw the Radar plugin stuff when game is in the background.
         /// </summary>
         public bool DrawWhenForeground = true;
 
         /// <summary>
-        /// Do not draw the Radar plugin stuff when user is in hideout/town.
+        ///     Do not draw the Radar plugin stuff when user is in hideout/town.
         /// </summary>
         public bool DrawWhenNotInHideoutOrTown = true;
 
         /// <summary>
-        /// Do not draw the Radar plugin stuff when user is in pause menu.
+        ///     Do not draw the Radar plugin stuff when user is in pause menu.
         /// </summary>
         public bool DrawWhenNotPaused = true;
 
         /// <summary>
-        /// Hides all the entities that are outside the network bubble.
+        ///     Hides all the entities that are outside the network bubble.
         /// </summary>
         public bool HideOutsideNetworkBubble = false;
 
         /// <summary>
-        /// Gets a value indicating whether user wants to modify large map culling window or not.
+        ///     Gets a value indicating whether user wants to modify large map culling window or not.
         /// </summary>
         public bool ModifyCullWindow = false;
 
         /// <summary>
-        /// Gets a value indicating whether user wants culling window
-        /// to cover the full game or not.
+        ///     Gets a value indicating whether user wants culling window
+        ///     to cover the full game or not.
         /// </summary>
         public bool MakeCullWindowFullScreen = true;
 
         /// <summary>
-        /// Gets a value indicating whether to draw the map in culling window or not.
+        ///     Gets a value indicating whether to draw the map in culling window or not.
         /// </summary>
         public bool DrawMapInCull = true;
 
         /// <summary>
-        /// Gets a value indicating whether to draw the POI in culling window or not.
+        ///     Gets a value indicating whether to draw the POI in culling window or not.
         /// </summary>
         public bool DrawPOIInCull = true;
 
         /// <summary>
-        /// Gets a value indicating whether user wants to draw walkable map or not.
+        ///     Gets a value indicating whether user wants to draw walkable map or not.
         /// </summary>
         public bool DrawWalkableMap = true;
 
         /// <summary>
-        /// Gets a value indicating what color to use for drawing walkable map.
+        ///     Gets a value indicating what color to use for drawing walkable map.
         /// </summary>
         public Vector4 WalkableMapColor = new Vector4(150f) / 255f;
 
         /// <summary>
-        /// Gets the map border thickness in generated texture pixels.
+        ///     Gets the map border thickness in generated texture pixels.
         /// </summary>
         public int WalkableMapBorderThickness = 1;
 
         /// <summary>
-        /// Gets the position of the cull window that the user wants.
+        ///     Gets the position of the cull window that the user wants.
         /// </summary>
         public Vector2 CullWindowPos = Vector2.Zero;
 
         /// <summary>
-        /// Get the size of the cull window that the user wants.
+        ///     Get the size of the cull window that the user wants.
         /// </summary>
         public Vector2 CullWindowSize = Vector2.Zero;
 
         /// <summary>
-        /// Gets a value indicating wether user wants to show Player icon or names.
+        ///     Gets a value indicating wether user wants to show Player icon or names.
         /// </summary>
         public bool ShowPlayersNames = false;
 
         /// <summary>
-        /// Gets a value indicating what is the maximum frequency a POI should have
+        ///     Gets a value indicating what is the maximum frequency a POI should have
         /// </summary>
         public int POIFrequencyFilter = 0;
 
         /// <summary>
-        /// Gets a value indicating wether user want to show important tgt names or not.
+        ///     Gets a value indicating wether user want to show important tgt names or not.
         /// </summary>
         public bool ShowImportantPOI = true;
 
         /// <summary>
-        /// Gets a value indicating what color to use for drawing the POI.
+        ///     Gets a value indicating what color to use for drawing the POI.
         /// </summary>
         public Vector4 POIColor = new(1f, 0.5f, 0.5f, 1f);
 
         /// <summary>
-        /// Gets a value indicating wether user want to draw a background when drawing the POI.
+        ///     Gets a value indicating wether user want to draw a background when drawing the POI.
         /// </summary>
         public bool EnablePOIBackground = true;
 
         /// <summary>
-        /// When true, renders POI indices in the 3D game world and opens the POI debug window.
+        ///     When true, renders POI indices in the 3D game world and opens the POI debug window.
         /// </summary>
         public bool DebugRealWorld = false;
 
         /// <summary>
-        /// Draw a pathfound line from the player to each configured POI.
+        ///     Draw a pathfound line from the player to each configured POI.
         /// </summary>
         public bool ShowPOIPathLines = true;
 
         /// <summary>
-        /// Width in pixels of each POI path line.
+        ///     Width in pixels of each POI path line.
         /// </summary>
         public float POIPathLineThickness = 2f;
 
         /// <summary>
-        /// Per-label colors for POI path lines. Keyed by label string; missing entries fall back to defaults.
+        ///     Per-label colors for POI path lines. Keyed by label string; missing entries fall back to defaults.
         /// </summary>
         public Dictionary<string, Vector4> POIPathColors = new();
 
         /// <summary>
-        /// Per-label enable flag for POI path lines. Keyed by label string; missing entries default to enabled.
+        ///     Per-label enable flag for POI path lines. Keyed by label string; missing entries default to enabled.
         /// </summary>
         public Dictionary<string, bool> POIPathEnabled = new();
 
         /// <summary>
-        /// Gets the Tgts and their expected clusters per area/zone/map.
-        /// </summary>
-        [JsonIgnore]
-        public Dictionary<string, Dictionary<string, string>> ImportantTgts = new();
-
-        /// <summary>
-        /// Icons to display on the map. Base game includes normal chests, strongboxes, monsters etc.
+        ///     Icons to display on the map. Base game includes normal chests, strongboxes, monsters etc.
         /// </summary>
         public Dictionary<string, IconPicker> BaseIcons = new();
 
         /// <summary>
-        /// Icons to display on the map. POIMonsters includes icons for monsters that are in custom category created by user
+        ///     Icons to display on the map. POIMonsters includes icons for monsters that are in custom category created by user
         /// </summary>
         public Dictionary<int, IconPicker> POIMonsters = new();
 
         /// <summary>
-        /// Icons to display on the map. Breach includes breach chests.
+        ///     Icons to display on the map. Breach includes breach chests.
         /// </summary>
         public Dictionary<string, IconPicker> BreachIcons = new();
 
         /// <summary>
-        /// Icons to display on the map. Delirium includes the special spawners and bombs that
-        /// delirium brings and they can't be convered by base icons.
+        ///     Icons to display on the map. Delirium includes the special spawners and bombs that
+        ///     delirium brings and they can't be convered by base icons.
         /// </summary>
         public Dictionary<string, IconPicker> DeliriumIcons = new();
 
         /// <summary>
-        /// Icons to display on the map. Delirium includes the special spawners and bombs that
-        /// delirium brings and they can't be convered by base icons.
+        ///     Icons to display on the map. Delirium includes the special spawners and bombs that
+        ///     delirium brings and they can't be convered by base icons.
         /// </summary>
         public Dictionary<string, IconPicker> ExpeditionIcons = new();
 
         /// <summary>
-        /// Icons to display on the map. Temple includes the Incursion waygate devices.
+        ///     Icons to display on the map. Temple includes the Incursion waygate devices.
         /// </summary>
         public Dictionary<string, IconPicker> TempleIcons = new();
 
         /// <summary>
-        /// Icons to display for Runed Monolith terrain features.
+        ///     Icons to display for Runed Monolith terrain features.
         /// </summary>
         public Dictionary<string, IconPicker> RunedMonolithIcons = new();
 
         /// <summary>
-        /// Icons to display on the map. Boss arena icons for endgame maps.
-        /// </summary>
-        public Dictionary<string, IconPicker> BossIcons = new();
-
-        /// <summary>
-        /// Gets the boss arena TGT paths and their display names.
-        /// </summary>
-        [JsonIgnore]
-        public Dictionary<string, string> BossArenaTgts = new();
-
-        /// <summary>
-        /// Gets the stairs TGT paths and their display names.
-        /// </summary>
-        [JsonIgnore]
-        public Dictionary<string, string> StairsTgts = new();
-
-        /// <summary>
-        /// Icons for expedition markers, keyed by display name.
+        ///     Icons for expedition markers, keyed by display name.
         /// </summary>
         public Dictionary<string, IconPicker> ExpeditionMarkerIcons = new();
 
         /// <summary>
-        /// Icons for expedition remnants with specific mods.
+        ///     Icons for expedition remnants with specific mods.
         /// </summary>
         public Dictionary<string, IconPicker> ExpeditionRemnantIcons = new();
 
         /// <summary>
-        /// The group number used for expedition markers in SpecialMiscObjPaths.
+        ///     The group number used for expedition markers in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int ExpeditionMarkerGroup = 100;
 
         /// <summary>
-        /// The group number used for expedition remnants in SpecialMiscObjPaths.
+        ///     The group number used for expedition remnants in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int ExpeditionRemnantGroup = 101;
 
         /// <summary>
-        /// The group number used for Expedition2 encounter objects in SpecialMiscObjPaths.
+        ///     The group number used for Expedition2 encounter objects in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int Expedition2EncounterGroup = 102;
 
         /// <summary>
-        /// The group number used for Brequel initiator objects in SpecialMiscObjPaths.
+        ///     The group number used for Brequel initiator objects in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int BrequelInitiatorGroup = 103;
 
         /// <summary>
-        /// The group number used for ritual rune interactables in SpecialMiscObjPaths.
+        ///     The group number used for ritual rune interactables in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int RitualRuneGroup = 104;
 
         /// <summary>
-        /// The group number used for delirium initiator object in SpecialMiscObjPaths.
+        ///     The group number used for delirium initiator object in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int DeliriumInitiatorGroup = 105;
 
         /// <summary>
-        /// The group number used for delirium loathsome mire offering object in SpecialMiscObjPaths.
+        ///     The group number used for delirium loathsome mire offering object in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int DeliriumMireOfferingGroup = 106;
 
         /// <summary>
-        /// The group number used for delirium loathsome mire portal object in SpecialMiscObjPaths.
+        ///     The group number used for delirium loathsome mire portal object in SpecialMiscObjPaths.
         /// </summary>
         [JsonIgnore]
         public const int DeliriumMirePortalGroup = 107;
 
         /// <summary>
-        /// Maps mod name substrings to display names used as keys in ExpeditionRemnantIcons.
+        ///     Maps mod name substrings to display names used as keys in ExpeditionRemnantIcons.
         /// </summary>
         [JsonIgnore]
         public static readonly Dictionary<string, string> ExpeditionRemnantModMap = new()
@@ -281,7 +258,7 @@ namespace OriathHub.Plugins.Radar
         };
 
         /// <summary>
-        /// Maps MinimapIcon.IconName to display name used as key in ExpeditionMarkerIcons.
+        ///     Maps MinimapIcon.IconName to display name used as key in ExpeditionMarkerIcons.
         /// </summary>
         [JsonIgnore]
         public static readonly Dictionary<string, string> ExpeditionMarkerIconNameMap = new()
@@ -296,8 +273,8 @@ namespace OriathHub.Plugins.Radar
         };
 
         /// <summary>
-        /// Icons to display on the map. This list includes icons for
-        /// OtherImportantObjects that are in custom category created by user
+        ///     Icons to display on the map. This list includes icons for
+        ///     OtherImportantObjects that are in custom category created by user
         /// </summary>
         public Dictionary<int, IconPicker> OtherImportantObjects = new();
 
@@ -308,35 +285,41 @@ namespace OriathHub.Plugins.Radar
         public Dictionary<int, string> SpecialObjectGroupLabels = new();
 
         /// <summary>
-        /// Enable/disable flags for entire icon groups, keyed by group heading text.
-        /// Missing entries default to enabled.
+        ///     Enable/disable flags for entire icon groups, keyed by group heading text.
+        ///     Missing entries default to enabled.
         /// </summary>
         public Dictionary<string, bool> IconGroupEnabled = new();
 
         /// <summary>
-        /// Enable/disable flags for individual icons within a group, keyed as "GroupName::ItemKey".
-        /// Missing entries default to enabled.
+        ///     Enable/disable flags for individual icons within a group, keyed as "GroupName::ItemKey".
+        ///     Missing entries default to enabled.
         /// </summary>
         public Dictionary<string, bool> IconItemEnabled = new();
 
         /// <summary>
-        /// Runtime-only memoization of composite "Group::Item" lookup keys. Without it,
-        /// <see cref="IsItemEnabled"/> allocates a fresh interpolated string on every call, and that
-        /// call runs once per drawn entity per frame in the icon loop — tens of thousands of throwaway
-        /// strings per second on a busy map. The cache is a pure projection of its inputs, so it never
-        /// needs invalidation when the enabled-state dictionaries change. Accessed only from the render
-        /// thread (DrawUI / DrawSettings). Private, so it is not serialized.
+        ///     Runtime-only memoization of composite "Group::Item" lookup keys. Without it,
+        ///     <see cref="IsItemEnabled"/> allocates a fresh interpolated string on every call, and that
+        ///     call runs once per drawn entity per frame in the icon loop — tens of thousands of throwaway
+        ///     strings per second on a busy map. The cache is a pure projection of its inputs, so it never
+        ///     needs invalidation when the enabled-state dictionaries change. Accessed only from the render
+        ///     thread (DrawUI / DrawSettings). Private, so it is not serialized.
         /// </summary>
         private readonly Dictionary<(string Group, string Item), string> compositeKeyCache = new();
 
-        /// <summary>Runtime-only memoization of custom-group item keys ("Group N"); see <see cref="GroupItemKey"/>.</summary>
+        /// <summary>
+        ///     Runtime-only memoization of custom-group item keys ("Group N"); see <see cref="GroupItemKey"/>.
+        /// </summary>
         private readonly Dictionary<int, string> groupItemKeyCache = new();
 
-        /// <summary>Returns true if the icon group is enabled (defaults to true when absent).</summary>
+        /// <summary>
+        ///     Returns true if the icon group is enabled (defaults to true when absent).
+        /// </summary>
         public bool IsGroupEnabled(string groupName) =>
             !this.IconGroupEnabled.TryGetValue(groupName, out var v) || v;
 
-        /// <summary>Returns true if the individual icon is enabled (defaults to true when absent).</summary>
+        /// <summary>
+        ///     Returns true if the individual icon is enabled (defaults to true when absent).
+        /// </summary>
         public bool IsItemEnabled(string groupName, string itemKey)
         {
             // Fast path: when nothing has been individually disabled the dictionary is empty,
@@ -357,8 +340,8 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Returns the per-frame item key for a custom group ("Default Group" for -1, else "Group N"),
-        /// memoized to avoid a string allocation per matching entity each frame.
+        ///     Returns the per-frame item key for a custom group ("Default Group" for -1, else "Group N"),
+        ///     memoized to avoid a string allocation per matching entity each frame.
         /// </summary>
         public string GroupItemKey(int customGroup)
         {
@@ -381,7 +364,7 @@ namespace OriathHub.Plugins.Radar
             labels.TryGetValue(key, out var lbl) && !string.IsNullOrWhiteSpace(lbl) ? lbl : $"Group {key}";
 
         /// <summary>
-        /// Draws the icons setting via the ImGui widgets.
+        ///     Draws the icons setting via the ImGui widgets.
         /// </summary>
         /// <param name="headingText">Text to display as heading.</param>
         /// <param name="icons">Icons settings to draw.</param>
@@ -665,9 +648,9 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Re-resolves all serialized icon paths against <paramref name="dllDirectory"/>.
-        /// Call this immediately after JSON deserialization so that icons remain valid
-        /// when the installation folder has been renamed or moved.
+        ///     Re-resolves all serialized icon paths against <paramref name="dllDirectory"/>.
+        ///     Call this immediately after JSON deserialization so that icons remain valid
+        ///     when the installation folder has been renamed or moved.
         /// </summary>
         /// <param name="dllDirectory">The current plugin DLL directory.</param>
         public void ReinitializeIconPaths(string dllDirectory)
@@ -679,14 +662,48 @@ namespace OriathHub.Plugins.Radar
             foreach (var icon in this.ExpeditionIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.TempleIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.RunedMonolithIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
-            foreach (var icon in this.BossIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.ExpeditionMarkerIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.ExpeditionRemnantIcons.Values) icon.ReinitializeFromDirectory(dllDirectory);
             foreach (var icon in this.OtherImportantObjects.Values) icon.ReinitializeFromDirectory(dllDirectory);
         }
 
         /// <summary>
-        /// Adds the default icons if the setting file isn't available.
+        ///     Releases each icon-atlas texture owned by these settings. The overlay cache is keyed
+        ///     by file path, so shared atlases must be removed exactly once.
+        /// </summary>
+        public void RemoveIconTextures()
+        {
+            var paths = new HashSet<string>(StringComparer.Ordinal);
+            void AddPaths(IEnumerable<IconPicker> icons)
+            {
+                foreach (var icon in icons)
+                {
+                    if (!string.IsNullOrEmpty(icon.FilePathName))
+                    {
+                        paths.Add(icon.FilePathName);
+                    }
+                }
+            }
+
+            AddPaths(this.BaseIcons.Values);
+            AddPaths(this.POIMonsters.Values);
+            AddPaths(this.BreachIcons.Values);
+            AddPaths(this.DeliriumIcons.Values);
+            AddPaths(this.ExpeditionIcons.Values);
+            AddPaths(this.TempleIcons.Values);
+            AddPaths(this.RunedMonolithIcons.Values);
+            AddPaths(this.ExpeditionMarkerIcons.Values);
+            AddPaths(this.ExpeditionRemnantIcons.Values);
+            AddPaths(this.OtherImportantObjects.Values);
+
+            foreach (var path in paths)
+            {
+                Core.Overlay.RemoveImage(path);
+            }
+        }
+
+        /// <summary>
+        ///     Adds the default icons if the setting file isn't available.
         /// </summary>
         /// <param name="dllDirectory">directory where the plugin dll is located.</param>
         public void AddDefaultIcons(string dllDirectory)
@@ -702,7 +719,6 @@ namespace OriathHub.Plugins.Radar
             this.AddDefaultExpeditionRemnantIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
             this.AddDefaultRunedMonolithIcons(basicIconPathName);
-            this.AddDefaultBossIcons(basicIconPathName);
         }
 
         private void AddDefaultBaseGameIcons(string iconPathName)
@@ -728,8 +744,6 @@ namespace OriathHub.Plugins.Radar
 
             this.BaseIcons.TryAdd("Yellow Bestiary Monster", new IconPicker(iconPathName, 6, 2, 35, IconSize));
             this.BaseIcons.TryAdd("Red Bestiary Monster", new IconPicker(iconPathName, 7, 2, 35, IconSize));
-
-            this.BaseIcons.TryAdd("Stairs", new IconPicker(iconPathName, 4, 1, 40, IconSize));
         }
 
         private void AddDefaultPOIMonsterIcons(string iconPathName)
@@ -789,11 +803,6 @@ namespace OriathHub.Plugins.Radar
         private void AddDefaultExpeditionRemnantIcons(string iconPathName)
         {
             this.ExpeditionRemnantIcons.TryAdd("Chest Item Quantity Remnant", new IconPicker(iconPathName, 11, 40, 100, IconSize));
-        }
-
-        private void AddDefaultBossIcons(string iconPathName)
-        {
-            this.BossIcons.TryAdd("Boss Arena", new IconPicker(iconPathName, 6, 57, 50, IconSize));
         }
 
     }

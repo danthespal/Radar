@@ -1,7 +1,7 @@
 namespace OriathHub.Plugins.Radar
 {
     /// <summary>
-    /// Detects if the current map location is map edge or not.
+    ///     Detects if the current map location is map edge or not.
     /// </summary>
     public class MapEdgeDetector
     {
@@ -9,12 +9,12 @@ namespace OriathHub.Plugins.Radar
         private readonly byte[] mapWalkableData;
 
         /// <summary>
-        /// Amount of rows for the map
+        ///     Amount of rows for the map
         /// </summary>
         public readonly int TotalRows;
 
         /// <summary>
-        /// Class that helps with map edge detection.
+        ///     Class that helps with map edge detection.
         /// </summary>
         /// <param name="mapWalkableData">Byte array that contains map walkable data</param>
         /// <param name="bytesPerRow"></param>
@@ -26,10 +26,10 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Detects if the current tile is a border.
+        ///     Detects if the current tile is a border.
         ///
-        /// The current tile is a border if it itself is not walkable and at least one adjacent tile is walkable.
-        /// At least one adjacent tile has to be walkable to avoid not just drawing all non-walkable tiles.
+        ///     The current tile is a border if it itself is not walkable and at least one adjacent tile is walkable.
+        ///     At least one adjacent tile has to be walkable to avoid not just drawing all non-walkable tiles.
         /// </summary>
         /// <returns>True if the current tile is a border, false otherwise.</returns>
         public bool IsBorder(int x, int y)
@@ -70,7 +70,7 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// Checks if (ImageX,ImageY) coordinate is within the width and height of the map.
+        ///     Checks if (ImageX,ImageY) coordinate is within the width and height of the map.
         /// </summary>
         /// <param name="imageX"></param>
         /// <param name="imageY"></param>
@@ -82,11 +82,11 @@ namespace OriathHub.Plugins.Radar
         }
 
         /// <summary>
-        /// 0 = not walkable 1,2,3,4,5 means potentially walkable.
-        /// It's potentially walkable because it also depends on entity size
-        /// (e.g. if entity size is 1 then 1 or above is walkable and
-        /// if entity size is 3 than 3 or above is walkable). For the purpose
-        /// of generating map we will assume everything above 0 is walkable.
+        ///     0 = not walkable 1,2,3,4,5 means potentially walkable.
+        ///     It's potentially walkable because it also depends on entity size
+        ///     (e.g. if entity size is 1 then 1 or above is walkable and
+        ///     if entity size is 3 than 3 or above is walkable). For the purpose
+        ///     of generating map we will assume everything above 0 is walkable.
         /// </summary>
         /// <param name="tileValue">map tile walkable value</param>
         /// <returns></returns>
@@ -94,7 +94,7 @@ namespace OriathHub.Plugins.Radar
             => tileValue != 0;
 
         /// <summary>
-        /// returns 1, 0 if x lies in first nibble otherwise 0, 1.
+        ///     returns 1, 0 if x lies in first nibble otherwise 0, 1.
         /// </summary>
         /// <param name="x">map walkable data array index.</param>
         /// <returns></returns>

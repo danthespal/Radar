@@ -24,13 +24,7 @@
     <None Update="icons.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="important_tgt_files.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="boss_arena_tgt_files.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="stairs_tgt_files.txt">
+    <None Update="targets.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
@@ -45,7 +39,7 @@
   <!-- Deploy the icon sprite + tgt data files alongside the DLL. -->
   <Target Name="CopyAssetsToHost" AfterTargets="Build" Condition="'$(OriathHubDir)' != ''">
     <ItemGroup>
-      <RadarAssets Include="icons.png;important_tgt_files.txt;boss_arena_tgt_files.txt;stairs_tgt_files.txt" />
+      <RadarAssets Include="icons.png;targets.json" />
     </ItemGroup>
     <Copy SourceFiles="@(RadarAssets)"
           DestinationFolder="$(OriathHubDir)\Plugins\$(AssemblyName)"
