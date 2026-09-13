@@ -1,6 +1,5 @@
 namespace OriathHub.Plugins.Radar
 {
-    using Newtonsoft.Json;
     using System;
 
     /// <summary>
@@ -55,8 +54,12 @@ namespace OriathHub.Plugins.Radar
         public TargetDescriptionAlternative[]? Alternatives { get; set; }
 
         /// <summary>
-        ///     Identity used to dedupe/key this target within an area.
+        ///     Identity used to dedupe/key this target within an area. Matches the source's own
+        ///     <c>Name#Rooms</c> composite (deliberately excluding <see cref="DisplayName"/>): two entries
+        ///     with the same pattern/rooms collapse to one, which is how an area-specific override (e.g. a
+        ///     boss room's contextual label) takes precedence over a same-shaped all-areas fallback (e.g.
+        ///     the generic "Boss Room" rule) instead of both rendering on top of each other.
         /// </summary>
-        internal string EqualityId => JsonConvert.SerializeObject(this, Formatting.None);
+        internal string EqualityId => $"{this.Name}#{string.Join(",", this.Rooms ?? Array.Empty<string>())}";
     }
 }

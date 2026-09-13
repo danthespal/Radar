@@ -113,7 +113,7 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.0.9";
+        public override string Version => "1.1.0";
 
         /// <inheritdoc/>
         public override void DrawSettings()

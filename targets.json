@@ -520,7 +520,7 @@
   "G2_4_3": [
     {
       "Name": "*",
-      "Rooms": [ "*terracotawarriors*" ],
+      "Rooms": [ "*terracotawarriors*", "**basement_ambush**" ],
       "ExpectedCount": 1,
       "DisplayName": "T2 Support Gem"
     },
@@ -591,6 +591,13 @@
     }
   ],
   "G2_5_2": [
+	{
+		"Name": "*",
+		"Rooms": [ "*landmark*" ],
+		"ExpectedCount": 1,
+		"DisplayName": "Rare & Magic Chests"
+		
+	},
     {
       "Name": "Metadata/Terrain/Desert/Badlands/Features/AreaTransition_BadlandsToPits_01.tdt",
       "ExpectedCount": 1,
