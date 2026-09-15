@@ -870,6 +870,12 @@
     }
   ],
   "G3_2_2": [
+	{
+      "Name": "*",
+      "Rooms": [ "*CarverBog*" ],
+      "ExpectedCount": 1,
+      "DisplayName": "The Azak Bog"
+    },
     {
       "Name": "Metadata/Terrain/Jungle/JungleExterior/CvWW_01.tdt",
       "ExpectedCount": 1,
