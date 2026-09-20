@@ -25,6 +25,13 @@ namespace OriathHub.Plugins.Radar
         /// </summary>
         private sealed record ClusteredTarget(TargetDescription Target, Vector2[] Locations);
 
+        /// <summary>
+        ///     Upper bound on the grid positions retained per entity-target path. Far more than
+        ///     k-means needs to place a handful of markers, and it keeps both the memory and the
+        ///     per-frame duplicate scan bounded within a long-lived area.
+        /// </summary>
+        private const int MaxLocationsPerTarget = 512;
+
         private string TargetsJsonPathName => Path.Join(this.DllDirectory, "targets.json");
 
         /// <summary>
@@ -392,6 +399,16 @@ namespace OriathHub.Plugins.Radar
             bool isNew;
             if (this._allTargetLocations.TryGetValue(path, out var existing))
             {
+                // Entities move, and this is keyed by path rather than by entity, so every distinct
+                // grid cell a matching monster ever stood in used to be appended forever — with an
+                // O(n) Contains scan per entity per frame on a list that only grows, and a full
+                // re-cluster on each new position. Cap it: the cluster only needs enough samples to
+                // place ExpectedCount markers, and it is already fed through Distinct().
+                if (existing.Count >= MaxLocationsPerTarget)
+                {
+                    return;
+                }
+
                 isNew = !existing.Contains(pos);
                 if (isNew)
                 {

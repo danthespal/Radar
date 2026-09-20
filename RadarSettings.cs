@@ -708,6 +708,7 @@ namespace OriathHub.Plugins.Radar
         /// <param name="dllDirectory">directory where the plugin dll is located.</param>
         public void AddDefaultIcons(string dllDirectory)
         {
+            this.EnsureCollections();
             var basicIconPathName = Path.Join(dllDirectory, "icons.png");
             this.AddDefaultBaseGameIcons(basicIconPathName);
             this.AddDefaultPOIMonsterIcons(basicIconPathName);
@@ -719,6 +720,34 @@ namespace OriathHub.Plugins.Radar
             this.AddDefaultExpeditionRemnantIcons(basicIconPathName);
             this.AddDefaultTempleIcons(basicIconPathName);
             this.AddDefaultRunedMonolithIcons(basicIconPathName);
+        }
+
+        /// <summary>
+        ///     Replaces any collection a saved settings file left null. Field initializers only survive
+        ///     deserialization when the JSON omits the member or Newtonsoft merges into it; an explicit
+        ///     <c>null</c> in the file overwrites them. The drawing path indexes these dictionaries
+        ///     directly every frame, and Radar deserializes with a lenient error handler that swallows
+        ///     per-member failures, so a null here would surface as a per-frame NullReferenceException
+        ///     rather than as a load error.
+        /// </summary>
+        private void EnsureCollections()
+        {
+            this.POIPathColors ??= new();
+            this.POIPathEnabled ??= new();
+            this.BaseIcons ??= new();
+            this.POIMonsters ??= new();
+            this.BreachIcons ??= new();
+            this.DeliriumIcons ??= new();
+            this.ExpeditionIcons ??= new();
+            this.TempleIcons ??= new();
+            this.RunedMonolithIcons ??= new();
+            this.ExpeditionMarkerIcons ??= new();
+            this.ExpeditionRemnantIcons ??= new();
+            this.OtherImportantObjects ??= new();
+            this.POIMonsterGroupLabels ??= new();
+            this.SpecialObjectGroupLabels ??= new();
+            this.IconGroupEnabled ??= new();
+            this.IconItemEnabled ??= new();
         }
 
         private void AddDefaultBaseGameIcons(string iconPathName)

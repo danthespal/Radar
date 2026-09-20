@@ -1,4 +1,4 @@
-namespace OriathHub.Plugins.Radar
+﻿namespace OriathHub.Plugins.Radar
 {
     using System;
     using System.Collections.Generic;
@@ -113,7 +113,11 @@ namespace OriathHub.Plugins.Radar
         public override string Author => "OriathHub";
 
         /// <inheritdoc/>
-        public override string Version => "1.1.0";
+#if DEBUG
+        public override string Version => "0.0.0-dev";
+#else
+        public override string Version => PluginVersion.Value;
+#endif
 
         /// <inheritdoc/>
         public override void DrawSettings()
@@ -1494,7 +1498,10 @@ namespace OriathHub.Plugins.Radar
             ImGui.NewLine();
             ImGui.InputInt("Filter on Max POI frenquency", ref this.Settings.POIFrequencyFilter);
             ImGui.InputText("Filter by text", ref this.tmpTileFilter, 200);
+            // The lower bound matters as much as the upper one: InputInt happily accepts a negative,
+            // and ElementAt(-1) throws ArgumentOutOfRangeException.
             if (ImGui.InputInt("Select POI via Index###tgtSelectorCounter", ref this.tmpTgtSelectionCounter) &&
+                this.tmpTgtSelectionCounter >= 0 &&
                 this.tmpTgtSelectionCounter < tgttilesInArea.Keys.Count)
             {
                 this.tmpTileName = tgttilesInArea.Keys.ElementAt(this.tmpTgtSelectionCounter);
@@ -1527,7 +1534,10 @@ namespace OriathHub.Plugins.Radar
         {
             if (ImGui.TreeNode($"Important Terrain POIs common for all Areas"))
             {
-                foreach (var tgt in this.GetLiteralTargets("common"))
+                // Materialise first: GetLiteralTargets is a deferred Where() over the live target
+                // list, and RemoveLiteralTarget mutates that same list — deleting any entry but the
+                // last threw "Collection was modified" on the next iteration.
+                foreach (var tgt in this.GetLiteralTargets("common").ToList())
                 {
                     if (ImGui.SmallButton($"Delete##{tgt.Name}"))
                     {
@@ -1549,7 +1559,8 @@ namespace OriathHub.Plugins.Radar
 
             if (ImGui.TreeNode($"Important Terrain POIs in Area: {this.currentAreaName}##import_time_in_area"))
             {
-                foreach (var tgt in this.GetLiteralTargets(this.currentAreaName))
+                // Materialised for the same reason as the "common" bucket above.
+                foreach (var tgt in this.GetLiteralTargets(this.currentAreaName).ToList())
                 {
                     if (ImGui.SmallButton($"Delete##{tgt.Name}"))
                     {
